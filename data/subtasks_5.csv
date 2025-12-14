@@ -1,0 +1,3 @@
+id,title,body,left_pct,top_pct,category_id,start_date,testup_date,proof_date,delivery_date,flag_start,flag_test,flag_proof,flag_delivery,flag_fb,ball_side,ball_mine,ball_theirs,ball_due,created_at,updated_at
+1,プロフィール用のWEBページ作る,,40.208333333333,46.704689480355,4,2025-08-18,,,,1,0,0,0,0,0,,,,2025-08-18T18:01:33+02:00,2025-08-24T10:54:24+02:00
+2,新しい仕事探す,,38.75,33.269961977186,4,,,,,0,0,0,0,0,0,,,,2025-08-24T10:54:15+02:00,2025-08-24T10:54:18+02:00
