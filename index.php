@@ -1,6 +1,6 @@
 <?php
 //index.php フロントエンド部分
-include_once(__DIR__ . '/asset/php/function.php');
+include_once(__DIR__ . '/asset/function.php');
 ?>
 
 <!DOCTYPE html>
@@ -11,8 +11,8 @@ include_once(__DIR__ . '/asset/php/function.php');
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex">
     <title>Quadrant TODO Board</title>
-    <link rel="stylesheet" href="asset/css/add.css">
-    <link rel="stylesheet" href="asset/css/sp.css">
+    <link rel="stylesheet" href="asset/add.css">
+    <link rel="stylesheet" href="asset/sp.css">
 </head>
 
 
@@ -240,15 +240,14 @@ include_once(__DIR__ . '/asset/php/function.php');
                     <textarea id="taskBody"></textarea>
                 </div>
 
-                <div class="row row-cat">
-                    <label class="input-label" for="taskCategory">カテゴリー</label>
-                    <div class="cat-field">
-                        <select id="taskCategory">
-                            <option value="0">(未設定)</option>
-                        </select>
-                        <input type="text" id="newCatName" placeholder="カテゴリ名を入力" />
-                        <button type="button" class="btn" id="newCatAddBtn" title="登録">▼</button>
-                    </div>
+                <div style="margin-top:10px;">
+                    <label class="input-label" style="display:block; margin-bottom:4px; font-size:12px; color:#666;">タグ設定</label>
+                    <div id="tagSelectContainer" style="background:#f9f9f9; padding:10px; border:1px solid #ddd; border-radius:4px; min-height:40px;"></div>
+                </div>
+
+                <div class="row row-tags" style="margin-top:10px; display:block;">
+                    <label class="input-label" style="display:block; margin-bottom:4px;">タグ設定</label>
+                    <div id="tagSelectContainer"></div>
                 </div>
 
                 <!-- ▼▼ どっちのボール ▼▼ -->
@@ -354,6 +353,28 @@ include_once(__DIR__ . '/asset/php/function.php');
     </div>
 
 
+    <div class="modal-backdrop" id="tagTypeModalBackdrop" aria-hidden="true">
+        <div class="modal" style="height:80vh; background:#fff; color:#000;">
+            <header style="background:#eee; color:#000;">
+                <div>タグ管理</div>
+                <button class="btn" id="tagTypeModalClose">×</button>
+            </header>
+            <div class="body" style="background:#fff; color:#000; padding:20px;">
+                <div style="margin-bottom:20px; border-bottom:1px solid #ccc; padding-bottom:10px;">
+                    <h4>タググループ追加（例: 案件名, 優先度）</h4>
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="newTagTypeName" placeholder="グループ名" style="background:#eee; color:#000; border:1px solid #999; flex:1; padding:8px;">
+                        <button class="btn" id="newTagTypeAddBtn">追加</button>
+                    </div>
+                </div>
+                <div id="tagTypesList">
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
     <!--　カテゴリーModal Category Edit Modal -->
     <div class="modal-backdrop" id="catModalBackdrop" aria-hidden="true">
         <div class="modal cat-modal" role="dialog" aria-modal="true" aria-labelledby="catModalTitle">
@@ -388,5 +409,10 @@ include_once(__DIR__ . '/asset/php/function.php');
     <script src="asset/js/02-categories.js"></script>
     <script src="asset/js/03-tasks.js"></script>
     <script src="asset/js/04-shell-and-calendar.js"></script>
+
+    <script src="asset/01-core.js"></script>
+    <script src="asset/02-tags.js"></script>
+    <script src="asset/03-tasks.js"></script>
+    <script src="asset/04-shell-and-calendar.js"></script>
 
 </html>
