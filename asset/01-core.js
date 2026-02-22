@@ -58,6 +58,7 @@
     // ---- Boot (DOM Ready後に呼ぶ) ----
     App.boot = async function(){
       try{
+        if (App.tags?.init) await App.tags.init(); // ★これを追加しました
         if (App.categories?.init) await App.categories.init();
         if (App.tasks?.init) await App.tasks.init();
         if (App.shell?.init) App.shell.init();

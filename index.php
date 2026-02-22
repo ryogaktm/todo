@@ -59,6 +59,7 @@ include_once(__DIR__ . '/asset/function.php');
             <!-- ▲ ここまで検索ボックス追加部分 ▲ -->
 
             <button class="btn" id="btnViewToggle" data-view="board">スケジュール表</button>
+            <button class="btn" id="btnManageTags">タグ管理</button>
             <button id="shortcutBtn">ショートカット</button>
             <button class="btn" id="btnCompletedToggle">完了リスト</button>
             <button class="btn btn-icon btn-primary" id="btnAdd" title="追加">+</button>
@@ -110,6 +111,8 @@ include_once(__DIR__ . '/asset/function.php');
     </div>
 
     <!-- ▲ ボールフィルタ帯 -->
+
+    <div id="tagFiltersContainer" class="tag-filter-container filter-bar" style="margin-bottom: 10px; padding: 0 16px;"></div>
 
     <div class="category-bar" id="categoryBar" aria-label="カテゴリ一覧" hidden></div>
     <div class="wrap">
@@ -184,11 +187,6 @@ include_once(__DIR__ . '/asset/function.php');
                     <button class="shortcut-close" id="shortcutCloseBtn" aria-label="閉じる">×</button>
 
 
-                    <div class="h-right">
-                        <input id="taskSearch" type="search" placeholder="タスク検索" />
-                        <button id="taskSearchClear" type="button" title="検索クリア">×</button>
-                        <!-- その右に既存ボタン群 -->
-                    </div>
                 </header>
                 <div class="body short_cut">
                     <ul style="margin:0; padding-left:18px; line-height:1.9; font-size:14px">
@@ -243,11 +241,6 @@ include_once(__DIR__ . '/asset/function.php');
                 <div style="margin-top:10px;">
                     <label class="input-label" style="display:block; margin-bottom:4px; font-size:12px; color:#666;">タグ設定</label>
                     <div id="tagSelectContainer" style="background:#f9f9f9; padding:10px; border:1px solid #ddd; border-radius:4px; min-height:40px;"></div>
-                </div>
-
-                <div class="row row-tags" style="margin-top:10px; display:block;">
-                    <label class="input-label" style="display:block; margin-bottom:4px;">タグ設定</label>
-                    <div id="tagSelectContainer"></div>
                 </div>
 
                 <!-- ▼▼ どっちのボール ▼▼ -->
@@ -375,40 +368,11 @@ include_once(__DIR__ . '/asset/function.php');
 
 
 
-    <!--　カテゴリーModal Category Edit Modal -->
-    <div class="modal-backdrop" id="catModalBackdrop" aria-hidden="true">
-        <div class="modal cat-modal" role="dialog" aria-modal="true" aria-labelledby="catModalTitle">
-            <header>
-                <div id="catModalTitle">カテゴリー編集</div>
-            </header>
-            <div class="body">
-                <div>
-                    <label class="input-label" for="catEditName">名前</label>
-                    <input type="text" id="catEditName" maxlength="60" />
-                </div>
-                <div>
-                    <label class="input-label" for="catEditNotes">備考</label>
-                    <textarea id="catEditNotes" rows="4" placeholder="特徴やルールなど自由にメモ"></textarea>
-                </div>
-
-            </div>
-            <div class="row-actions">
-                <button class="btn btn-danger" id="catEditDelete" style="margin-right:auto;">削除</button>
-                <button class="btn" id="catEditCancel">キャンセル</button>
-                <button class="btn" id="catEditSave">保存</button>
-            </div>
-        </div>
-    </div>
 
     <div class="toast" id="toast"></div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-
-    <script src="asset/js/01-core.js"></script>
-    <script src="asset/js/02-categories.js"></script>
-    <script src="asset/js/03-tasks.js"></script>
-    <script src="asset/js/04-shell-and-calendar.js"></script>
 
     <script src="asset/01-core.js"></script>
     <script src="asset/02-tags.js"></script>

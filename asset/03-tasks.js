@@ -31,8 +31,6 @@ App.state._savedFilters = null;
     const $taskTestTime     = $('#taskTestTime');
     const $taskProofTime    = $('#taskProofTime');
     const $taskDeliveryTime = $('#taskDeliveryTime');
-    const $taskCategory = $('#taskCategory');
-  
   
     const $subtasksPane       = $('#subtasksPane');
     const $subtasksList       = $('#subtasksList');
@@ -104,10 +102,11 @@ function matchTextFilter($card){
 
 
 // === Phase1: DOM参照をレジストリにミラー（今は使わなくてもOK・互換維持） ===
+// === Phase1: DOM参照をレジストリにミラー（今は使わなくてもOK・互換維持） ===
 Object.assign(T.el, {
   $board, $modal, $title, $body,
   $btnAdd, $btnSave, $btnCancel, $btnDelete, $btnComplete,
-  $taskStart, $taskTest, $taskProof, $taskDelivery, $taskCategory,
+  $taskStart, $taskTest, $taskProof, $taskDelivery,
   $subtasksPane, $subtasksList, $subtaskAddBtn, $subtaskTitleInput, $openSubPageBtn,
   $chkStart, $chkTest, $chkProof, $chkDelivery, $chkFB,
   $ballTabMine, $ballTabTheirs, $ballListProd, $ballTabNone, $ballMine, $ballTheirs, $ballSide, $ballDue,
@@ -1034,10 +1033,6 @@ App.tasks.renderCardTitle = renderCardTitle;
 
     // ---- カード描画・ドラッグ ----
     function addCard(item){
-      // カテゴリID強制処理は削除またはタグ用に変更が必要だが、一旦コメントアウト
-      // if (App.state.isSubpage) { ... }
-    
-      // data-cat を削除し、data-tags を追加
       const tagIdsStr = (item.tag_ids || []).join(',');
       
       const $el = $(`
@@ -1048,27 +1043,32 @@ App.tasks.renderCardTitle = renderCardTitle;
           <button class="note-btn" title="詳細を開く">📝</button>
         </div>
       `);
-      // data-* に日付
       $el.attr({
         'data-start':    item.start_date    || '',
         'data-testup':   item.testup_date   || '',
         'data-proof':    item.proof_date    || '',
-          'data-delivery': item.delivery_date || '',
-         'data-start-time':    item.start_time    || '',
-         'data-testup-time':   item.testup_time   || '',
-         'data-proof-time':    item.proof_time    || '',
-         'data-delivery-time': item.delivery_time || '',
-         'data-ball-due-time': item.ball_due_time || '',
-         'data-est-hours': (item.est_hours ?? '')
+        'data-delivery': item.delivery_date || '',
+        'data-start-time':    item.start_time    || '',
+        'data-testup-time':   item.testup_time   || '',
+        'data-proof-time':    item.proof_time    || '',
+        'data-delivery-time': item.delivery_time || '',
+        'data-ball-due-time': item.ball_due_time || '',
+        'data-est-hours': (item.est_hours ?? '')
       });
   
-      // 純タイトルは data に保持、表示はカテゴリ名付きにする
-// タイトル設定（カテゴリ名の合成処理を除去してシンプルに）
-$el.data('raw_title', item.title || '');
-$el.find('.title .t').text(item.title || '');
+      $el.data('raw_title', item.title || '');
+      $el.find('.title .t').text(item.title || '');
       $el.css({ left: item.left_pct + '%', top: item.top_pct + '%' });
       $el.data('body', item.body || '');
 
+      if (App.tags && App.tags.getColorForTask) {
+          const color = App.tags.getColorForTask(item.id);
+          if (color) {
+              const dark = App.utils && App.utils.shade ? App.utils.shade(color, -40) : '#222';
+              $el.css('background', `linear-gradient(180deg, ${color}, ${dark})`)
+                 .css('border-color', 'rgba(255,255,255,.10)');
+          }
+      }
   
       $el.attr('data-ball-side', String(item.ball_side ?? 0));
       $el.attr('data-ball-due',  item.ball_due || '');
@@ -1077,45 +1077,36 @@ $el.find('.title .t').text(item.title || '');
       $el.data('ball_prod',   item.ball_prod   || ''); 
       renderCardBallNote($el);
   
- 
+      const flags = {
+        start:    !!Number(item.flag_start),
+        test:     !!Number(item.flag_test),
+        proof:    !!Number(item.flag_proof),
+        delivery: !!Number(item.flag_delivery),
+        fb:       !!Number(item.flag_fb)
+      };
 
-// addCard の $board.append($el); makeDraggable($el); の直前～直後に追加
- const flags = {
-     start:    !!Number(item.flag_start),
-     test:     !!Number(item.flag_test),
-     proof:    !!Number(item.flag_proof),
-     delivery: !!Number(item.flag_delivery),
-     fb:       !!Number(item.flag_fb)
-   };
+      setCardFlags($el, flags);
+      $board.append($el);
+      makeDraggable($el);
+      updateCardBadges($el);
+      updateStageClasses($el); 
 
-setCardFlags($el, flags);
-$board.append($el);
-makeDraggable($el);
-updateCardBadges($el);
-updateStageClasses($el); 
- // 追加直後に02側のフィルタを適用（class付けは02に一元化）
- App.categories?.applyFilter?.();
- applyBallFilterAndRenderList();
- updateTodayEstHours();
- updateCardScale(); 
-
-
-}
-  
+      if (App.tags && App.tags.renderFilters) App.tags.renderFilters();
+      applyBallFilterAndRenderList();
+      updateTodayEstHours();
+      updateCardScale(); 
+    }
 
   // カードDOM -> openModalに渡せるオブジェクトへ
   function itemFromCard($card){
-    // data-tags="1,2,3" を配列 [1,2,3] に変換
     const tagStr = $card.attr('data-tags') || '';
     const tagIds = tagStr ? tagStr.split(',').map(Number) : [];
-
     return {
-        id: parseInt($card.attr('data-id'), 10),
-        title: $card.data('raw_title') || $card.find('.title .t').text(),
-        body: $card.data('body') || '',
-        tag_ids: tagIds, // ★追加: カテゴリIDの代わりにタグID配列を渡す
-        start_date:    $card.attr('data-start')    || '',
-
+      id: parseInt($card.attr('data-id'), 10),
+      title: $card.data('raw_title') || $card.find('.title .t').text(),
+      body: $card.data('body') || '',
+      tag_ids:      (App.tags && App.tags.getSelectedTagIds) ? App.tags.getSelectedTagIds() : [],
+        start_date:    $card.attr('data-start')    || '',        
         testup_date:   $card.attr('data-testup')   || '',
         proof_date:    $card.attr('data-proof')    || '',
         delivery_date: $card.attr('data-delivery') || '',
@@ -1304,8 +1295,8 @@ $card.off('dblclick').on('dblclick', function(e){
     function openModal(item=null){
       resetSaving();   
       App.state.modalOpen = true;
-      $board.css('pointer-events','none'); // 背面を触れなくする
-      $(window).off('.tasksdrag');         // 念のためドラッグ系を全解除
+      $board.css('pointer-events','none');
+      $(window).off('.tasksdrag');
 
       $modal.css('display','flex').attr('aria-hidden','false');
       $('body').css('overflow','hidden');
@@ -1323,11 +1314,10 @@ $card.off('dblclick').on('dblclick', function(e){
         $ballTheirs.val(item.ball_theirs || '');
         $ballDue.val(item.ball_due || '');
         $ballDueTime.val(item.ball_due_time || '');
-        setBallSide(item.ball_side ?? 0); // 0=こっち,1=向こう,2=制作
+        setBallSide(item.ball_side ?? 0);
         $estHours.val(item.est_hours ?? '');
         $ballProd.val(item.ball_prod || ''); 
         
-  
         if (!App.state.SUB_ID && App.state.editingId && $subtasksPane.length){
           $subtasksPane.prop('hidden', false).attr('data-parent', String(App.state.editingId));
           if ($openSubPageBtn.length){
@@ -1335,8 +1325,6 @@ $card.off('dblclick').on('dblclick', function(e){
           }
           loadSubtasks(App.state.editingId);
         } else {
-
-
           $subtasksPane.prop('hidden', true).removeAttr('data-parent');
         }
   
@@ -1349,17 +1337,15 @@ $card.off('dblclick').on('dblclick', function(e){
         $taskProofTime.val(item.proof_time    || '');
         $taskDeliveryTime.val(item.delivery_time || '');
 
-        // ★変更: タグの選択状態を反映
         if (App.tags && App.tags.renderSelect) {
           App.tags.renderSelect(item.tag_ids || []);
-      }
-        
+        }
+
         $chkStart.prop('checked',    !!Number(item.flag_start));
         $chkTest.prop('checked',     !!Number(item.flag_test));
         $chkProof.prop('checked',    !!Number(item.flag_proof));
         $chkDelivery.prop('checked', !!Number(item.flag_delivery));
         $chkFB.prop('checked',       !!Number(item.flag_fb));
-
 
       } else {
         $('#modalTitle').text('タスクを追加');
@@ -1379,19 +1365,16 @@ $card.off('dblclick').on('dblclick', function(e){
         $taskProofTime.val('');
         $taskDeliveryTime.val('');
 
-        // ★変更: タグ選択状態を初期化（空配列）
         if (App.tags && App.tags.renderSelect) {
           App.tags.renderSelect([]);
-      }
+        }
 
-         // チェック初期値
          const today = App.utils.today();
-         $chkStart.prop('checked', false);   // 既定で今日なのでON
+         $chkStart.prop('checked', false);
          $chkTest.prop('checked', false);
          $chkProof.prop('checked', false);
          $chkDelivery.prop('checked', false);
          $chkFB.prop('checked', false);
-         // 新規は「こっち」＋ 期限は空
          $ballMine.val('');
          $ballTheirs.val('');
          $ballProd.val(''); 
@@ -1400,7 +1383,6 @@ $card.off('dblclick').on('dblclick', function(e){
          setBallSide(0);
          $estHours.val('');
       }
-  
       $title.trigger('focus');
     }
 
@@ -1424,9 +1406,9 @@ $card.off('dblclick').on('dblclick', function(e){
       const payload = {
         title:        ($title.val()||'').trim(),
         body:         ($body.val()||'').trim(),
-        // category_id は廃止。代わりに App.tags からタグID配列を取得
-        tag_ids: (App.tags && App.tags.getSelectedTagIds) ? App.tags.getSelectedTagIds() : [],
+        tag_ids:      (App.tags && App.tags.getSelectedTagIds) ? App.tags.getSelectedTagIds() : [],
         start_date:   ($taskStart.val()||'').trim(),
+  
         testup_date:  ($taskTest.val()||'').trim(),
         proof_date:   ($taskProof.val()||'').trim(),
         delivery_date:( $taskDelivery.val()||'').trim(),
@@ -1498,20 +1480,18 @@ $card.off('dblclick').on('dblclick', function(e){
   
     // ---- 保存/更新/削除/完了 ----
     function doSave(){
-      // 二重押下ガード
       if (App.state.saving) return;
       App.state.saving = true;
     
       const $save = $('#btnSave');
       $save.prop('disabled', true).addClass('is-busy');
     
-      const p = collectTaskPayload(); // ← これ1回だけ
+      const p = collectTaskPayload();
     
-      // バリデーション
       if (!p.title){
         App.utils.showToast('タイトルを入力してください');
         $title.focus();
-        resetSaving();  // ← 忘れず解除
+        resetSaving();
         return;
       }
       if (!p.start_date && (p.testup_date || p.proof_date || p.delivery_date)){
@@ -1520,29 +1500,31 @@ $card.off('dblclick').on('dblclick', function(e){
         return;
       }
     
-      // 新規 or 更新
       if (App.state.editingId === null){
+        // ★新規追加の処理
         App.api.post(App.api.url('?action=create'), p)
-          .done(json => {
+          .done(async json => {
             if (json.ok){
+              json.item.tag_ids = p.tag_ids; // 追加直後のカード表示用
               addCard(json.item);
               const $c = $(`[data-id="${json.item.id}"]`);
-              applyPayloadToCard($c, p);
-
-               $c.data('raw_title', p.title);
-               $c.find('.title .t').text(composeDisplayTitle(p.title, p.category_id));
+              if ($c.length && typeof applyPayloadToCard === 'function') applyPayloadToCard($c, p);
+  
+              $c.data('raw_title', p.title);
+              $c.find('.title .t').text(p.title);
               $c.data('body', p.body);
-
-              const cat = App.categories.getById(json.item.category_id);
-              if (cat){
-                const base = cat.color, dark = App.utils.shade(cat.color, -40);
-                $c.css('background', `linear-gradient(180deg, ${base}, ${dark})`)
-                  .css('border-color', 'rgba(255,255,255,.10)');
+  
+              // サーバーの最新タグ情報を読み込み
+              if (App.tags && App.tags.loadAll) await App.tags.loadAll();
+              
+              if (App.tags && App.tags.getColorForTask) {
+                const color = App.tags.getColorForTask(json.item.id);
+                if (color && $c.length) {
+                    $c.css('background', `linear-gradient(180deg, ${color}, #222)`);
+                }
               }
-    
-              refreshSubCounts();
-              App.categories.refreshCounts();
-              App.categories.applyFilter();
+  
+              if (App.tags && App.tags.renderFilters) App.tags.renderFilters();
               if (App.calendar && App.calendar.isActive()) App.calendar.render();
     
               closeModal();
@@ -1552,41 +1534,39 @@ $card.off('dblclick').on('dblclick', function(e){
             }
           })
           .fail(() => App.utils.showToast('通信エラー'))
-          .always(resetSaving);   // ← 必ず解除
+          .always(resetSaving);
         } else {
+          // ★更新の処理
           const id = App.state.editingId;
           App.api.post(App.api.url('?action=update'), { id, ...p })
-            .done(json => {
+            .done(async json => {
               if (json.ok){
                 const $card = $(`[data-id="${id}"]`);
                 if (!$card.length){ App.utils.showToast('カードが見つかりません'); resetSaving(); return; }
         
-                applyPayloadToCard($card, p);
+                if (typeof applyPayloadToCard === 'function') applyPayloadToCard($card, p);
         
-                // 純タイトル & 本文をDOMに保持
                 $card.data('raw_title', p.title);
                 $card.data('body', p.body);
         
-                // 先にカテゴリ反映（表示名合成で参照するため）
-                $card.attr('data-cat', String(p.category_id));
-        
-                // 見た目（色など）
-                const cat = App.categories.getById(p.category_id);
-                if (cat){
-                  const base = cat.color, dark = App.utils.shade(cat.color, -40);
-                  $card.css('background', `linear-gradient(180deg, ${base}, ${dark})`)
-                       .css('border-color', 'rgba(255,255,255,.10)');
-                } else {
-                  $card.css({ background:'', borderColor:'' });
+                $card.attr('data-tags', (p.tag_ids || []).join(','));
+                $card.find('.title .t').text(p.title);
+                
+                // サーバーの最新タグ情報を読み込み
+                if (App.tags && App.tags.loadAll) await App.tags.loadAll();
+  
+                if (App.tags && App.tags.getColorForTask) {
+                    const color = App.tags.getColorForTask(id);
+                    if (color) {
+                        const dark = App.utils && App.utils.shade ? App.utils.shade(color, -40) : '#222';
+                        $card.css('background', `linear-gradient(180deg, ${color}, ${dark})`)
+                             .css('border-color', 'rgba(255,255,255,.10)');
+                    } else {
+                        $card.css({ background:'', borderColor:'' });
+                    }
                 }
         
-                // 表示タイトル更新（カテゴリ名＿タイトル）
-                // renderCardTitle が無ければ下の1行でOK
-                // $card.find('.title .t').text(composeDisplayTitle(p.title, p.category_id));
-                renderCardTitle?.($card);
-        
-                App.categories.applyFilter();
-                App.categories.refreshCounts();
+                if (App.tags && App.tags.renderFilters) App.tags.renderFilters();
                 if (App.calendar && App.calendar.isActive()) App.calendar.render();
         
                 closeModal();
@@ -1628,51 +1608,47 @@ function collectTagPayload(){
 }
 
 
-  
-    function doDelete(){
-      if (App.state.editingId === null) return;
-      if (!window.confirm('削除しますか？')) return;
-    
-      App.api.post(App.api.url('?action=delete'), { id: App.state.editingId })
-        .done(json => {
-          if (!json.ok){ App.utils.showToast(json.error||'エラー'); return; }
-          $(`[data-id="${App.state.editingId}"]`).remove();
-          App.categories.applyFilter();
-          App.categories.refreshCounts();
-          closeModal();
-          App.utils.showToast('削除しました');
-          updateTodayEstHours(); 
-          updateCardScale(); 
-        })
-        .fail(() => App.utils.showToast('通信エラー：削除できませんでした'));
-    }
-    
-    function doComplete(){
-      if (App.state.editingId == null) return;
-      const $card = $(`[data-id="${App.state.editingId}"]`);
-      if (!$card.length) return;
-    
-      const item = {
-        id: App.state.editingId,
-        title: ($title.val() || $card.find('h4').text() || '(無題)').trim(),
-        body:  ($body.val()  || $card.data('body') || '').trim()
-      };
-      App.shell.completed.add({ title: item.title, body: item.body });
-    
-      App.api.post(App.api.url('?action=delete'), { id: App.state.editingId })
-        .done(json => {
-          if (!json.ok){ App.utils.showToast(json.error || '削除エラー'); return; }
-          $card.remove();
-          App.categories.applyFilter();
-          App.categories.refreshCounts();
-          if (App.calendar && App.calendar.isActive()) App.calendar.render();
-          closeModal();
-          App.utils.showToast('完了に移動＆削除しました');
-          updateTodayEstHours(); 
-          updateCardScale(); 
-        })
-        .fail(() => App.utils.showToast('通信エラー：削除できませんでした'));
-    }
+function doDelete(){
+  if (App.state.editingId === null) return;
+  if (!window.confirm('削除しますか？')) return;
+
+  App.api.post(App.api.url('?action=delete'), { id: App.state.editingId })
+    .done(json => {
+      if (!json.ok){ App.utils.showToast(json.error||'エラー'); return; }
+      $(`[data-id="${App.state.editingId}"]`).remove();
+      if (App.tags && App.tags.renderFilters) App.tags.renderFilters();
+      closeModal();
+      App.utils.showToast('削除しました');
+      updateTodayEstHours(); 
+      updateCardScale(); 
+    })
+    .fail(() => App.utils.showToast('通信エラー：削除できませんでした'));
+}
+function doComplete(){
+  if (App.state.editingId == null) return;
+  const $card = $(`[data-id="${App.state.editingId}"]`);
+  if (!$card.length) return;
+
+  const item = {
+    id: App.state.editingId,
+    title: ($title.val() || $card.find('h4').text() || '(無題)').trim(),
+    body:  ($body.val()  || $card.data('body') || '').trim()
+  };
+  App.shell.completed.add({ title: item.title, body: item.body });
+
+  App.api.post(App.api.url('?action=delete'), { id: App.state.editingId })
+    .done(json => {
+      if (!json.ok){ App.utils.showToast(json.error || '削除エラー'); return; }
+      $card.remove();
+      if (App.tags && App.tags.renderFilters) App.tags.renderFilters();
+      if (App.calendar && App.calendar.isActive()) App.calendar.render();
+      closeModal();
+      App.utils.showToast('完了に移動＆削除しました');
+      updateTodayEstHours(); 
+      updateCardScale(); 
+    })
+    .fail(() => App.utils.showToast('通信エラー：削除できませんでした'));
+}
   
     // ---- 右カラム(小タスク) 追加/削除 ----
     $subtaskAddBtn.on('click', function(){
@@ -2387,7 +2363,8 @@ Object.assign(App.tasks, {
       if (json.ok){
         (json.items||[]).forEach(addCard);
         refreshSubCounts();
-        App.categories.applyFilter();
+        // ★ここをタグ用に書き換え
+        if (App.tags && App.tags.renderFilters) App.tags.renderFilters();
         applyBallFilterAndRenderList();
         updateTodayEstHours(); 
         updateCardScale();
