@@ -84,83 +84,73 @@
         },
 
         // タスク編集モーダル内の描画
-// タスク編集モーダル内の描画
-renderSelect(currentTagIds = []){
-    $selectContainer.empty();
-    if(TAG_TYPES.length === 0) {
-        $selectContainer.html('<div style="color:#aaa">タググループがありません。「タグ管理」から作成してください。</div>');
-        return;
-    }
-
-    // トグルスイッチの状態（複数選択モードか？）を取得
-    const isMultiMode = $('#tagModeToggle').is(':checked');
-
-    TAG_TYPES.forEach(type => {
-        const groupTags = TAGS.filter(t => t.type_id == type.id);
-        
-        const $row = $(`<div style="margin-bottom:8px; border-bottom:1px solid #444; padding-bottom:4px;"></div>`);
-        $row.append(`<div style="font-size:12px; color:#aaa; margin-bottom:4px;">${type.name}</div>`);
-        
-        const $wrap = $(`<div style="display:flex; flex-wrap:wrap; gap:8px;"></div>`);
-        
-        // 単一選択（ラジオ）の場合のクリアボタン
-        if (!isMultiMode) {
-            const $clearLabel = $(`
-                <label style="display:flex; align-items:center; background:#555; color:#ccc; padding:2px 6px; border-radius:4px; font-size:12px; cursor:pointer;">
-                    <input type="radio" name="tags_${type.id}" value="" style="margin-right:4px;">
-                    (なし)
-                </label>
-            `);
-            $wrap.append($clearLabel);
-        } else if(groupTags.length === 0) {
-            $wrap.append('<span style="font-size:10px; color:#666;">タグなし</span>');
-        }
-
-        groupTags.forEach(tag => {
-            const isChecked = currentTagIds.includes(Number(tag.id));
-            
-            // モードに応じて input type を切り替え
-            const inputType = isMultiMode ? 'checkbox' : 'radio';
-            // ラジオの場合はグループごとに同じ name を付ける
-            const inputName = isMultiMode ? 'tags[]' : `tags_${type.id}`;
-
-            const $label = $(`
-                <label style="display:flex; align-items:center; background:#444; padding:2px 6px; border-radius:4px; font-size:12px; cursor:pointer;">
-                    <input type="${inputType}" name="${inputName}" value="${tag.id}" ${isChecked ? 'checked' : ''} style="margin-right:4px;">
-                    ${tag.name}
-                </label>
-            `);
-            $wrap.append($label);
-        });
-        
-        // その場でタグ追加ボタン
-        const $addBtn = $(`<button type="button" style="font-size:10px; background:#555; border:none; color:#fff; cursor:pointer; padding:2px 6px; border-radius:4px;">+追加</button>`);
-        $addBtn.on('click', ()=>{
-            const newName = prompt(`${type.name} に新しいタグを追加:`);
-            if(newName){
-                App.api.post('?action=tag_create', { type_id: type.id, name: newName, color: getRandomColor() })
-                .done(async ()=>{ 
-                    await this.loadAll(); 
-                    // 追加したタグも選択状態にするためにIDを追加
-                    const newTag = TAGS.find(t => t.name === newName && t.type_id === type.id);
-                    if (newTag) currentTagIds.push(Number(newTag.id));
-                    this.renderSelect(currentTagIds); 
-                    this.renderFilters(); 
-                });
+        // タスク編集モーダル内の描画
+        renderSelect(currentTagIds = []){
+            $selectContainer.empty();
+            if(TAG_TYPES.length === 0) {
+                $selectContainer.html('<div style="color:#aaa">タググループがありません。「タグ管理」から作成してください。</div>');
+                return;
             }
-        });
-        $wrap.append($addBtn);
 
-        $row.append($wrap);
-        $selectContainer.append($row);
-    });
+            TAG_TYPES.forEach(type => {
+                const groupTags = TAGS.filter(t => t.type_id == type.id);
+                // ★修正: タググループの「複数選択許可フラグ」を order 列から読み取る
+                const isMultiMode = (type.order == 1); 
+                
+                const $row = $(`<div style="margin-bottom:8px; border-bottom:1px solid #444; padding-bottom:4px;"></div>`);
+                
+                // 分かりやすいようにグループ名に (複数選択可) を表示
+                $row.append(`<div style="font-size:12px; color:#aaa; margin-bottom:4px;">${type.name} ${isMultiMode ? '<span style="font-size:10px; color:#8f8;">(複数選択可)</span>' : ''}</div>`);
+                
+                const $wrap = $(`<div style="display:flex; flex-wrap:wrap; gap:8px;"></div>`);
+                
+                // 単一選択（ラジオ）の場合のクリアボタン
+                if (!isMultiMode) {
+                    const $clearLabel = $(`
+                        <label style="display:flex; align-items:center; background:#555; color:#ccc; padding:2px 6px; border-radius:4px; font-size:12px; cursor:pointer;">
+                            <input type="radio" name="tags_${type.id}" value="" style="margin-right:4px;">
+                            (なし)
+                        </label>
+                    `);
+                    $wrap.append($clearLabel);
+                } else if(groupTags.length === 0) {
+                    $wrap.append('<span style="font-size:10px; color:#666;">タグなし</span>');
+                }
 
-    // トグルが切り替わった時に再描画するイベントを（一度だけ）登録
-    $('#tagModeToggle').off('change.tagMode').on('change.tagMode', () => {
-        // 現在選択されているIDを引き継いで再描画
-        this.renderSelect(this.getSelectedTagIds().map(Number));
-    });
-},
+                groupTags.forEach(tag => {
+                    const isChecked = currentTagIds.includes(Number(tag.id));
+                    const inputType = isMultiMode ? 'checkbox' : 'radio';
+                    const inputName = isMultiMode ? 'tags[]' : `tags_${type.id}`;
+
+                    const $label = $(`
+                        <label style="display:flex; align-items:center; background:#444; padding:2px 6px; border-radius:4px; font-size:12px; cursor:pointer;">
+                            <input type="${inputType}" name="${inputName}" value="${tag.id}" ${isChecked ? 'checked' : ''} style="margin-right:4px;">
+                            ${tag.name}
+                        </label>
+                    `);
+                    $wrap.append($label);
+                });
+                
+                const $addBtn = $(`<button type="button" style="font-size:10px; background:#555; border:none; color:#fff; cursor:pointer; padding:2px 6px; border-radius:4px;">+追加</button>`);
+                $addBtn.on('click', ()=>{
+                    const newName = prompt(`${type.name} に新しいタグを追加:`);
+                    if(newName){
+                        App.api.post('?action=tag_create', { type_id: type.id, name: newName, color: getRandomColor() })
+                        .done(async ()=>{ 
+                            await this.loadAll(); 
+                            const newTag = TAGS.find(t => t.name === newName && t.type_id === type.id);
+                            if (newTag) currentTagIds.push(Number(newTag.id));
+                            this.renderSelect(currentTagIds); 
+                            this.renderFilters(); 
+                        });
+                    }
+                });
+                $wrap.append($addBtn);
+
+                $row.append($wrap);
+                $selectContainer.append($row);
+            });
+        },
         
 getSelectedTagIds(){
     const ids = [];
@@ -178,17 +168,21 @@ getSelectedTagIds(){
                 this.renderManageList();
             });
             $('#tagTypeModalClose').on('click', ()=> $manageModal.hide());
+
             $('#newTagTypeAddBtn').on('click', ()=>{
                 const name = $('#newTagTypeName').val().trim();
+                const isMulti = $('#newTagTypeMulti').is(':checked') ? 1 : 0;
                 if(name) {
-                    App.api.post('?action=tagtype_create', { name }).done(async ()=>{
+                    App.api.post('?action=tagtype_create', { name, is_multi: isMulti }).done(async ()=>{
                         $('#newTagTypeName').val('');
+                        $('#newTagTypeMulti').prop('checked', false);
                         await this.loadAll();
                         this.renderManageList();
                         this.renderFilters();
                     });
                 }
             });
+
 
             // ▼ 追加: グループの編集
             $manageList.on('click', '.btn-edit-type', function(){
@@ -252,11 +246,15 @@ getSelectedTagIds(){
             TAG_TYPES.forEach(type => {
                 const groupTags = TAGS.filter(t => t.type_id == type.id);
                 
+                const multiBadge = type.order == 1 
+                    ? '<span style="font-size:10px; background:#4CAF50; color:#fff; padding:2px 6px; border-radius:10px; margin-left:8px; vertical-align:middle;">複数選択可</span>' 
+                    : '<span style="font-size:10px; background:#888; color:#fff; padding:2px 6px; border-radius:10px; margin-left:8px; vertical-align:middle;">単一選択</span>';
+                
                 // グループ名の行（右側に編集・削除ボタン）
                 const $div = $(`
                     <div style="padding:10px; border-bottom:1px solid #ddd; background:#f9f9f9; margin-bottom:8px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                            <span style="font-size:14px; font-weight:bold; color:#333;">${App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(type.name) : type.name}</span>
+                            <span style="font-size:14px; font-weight:bold; color:#333;">${App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(type.name) : type.name}${multiBadge}</span>
                             <div>
                                 <button class="btn btn-sm btn-edit-type" data-id="${type.id}" data-name="${type.name}" style="padding:2px 8px; margin-right:4px;">編集</button>
                                 <button class="btn btn-sm btn-del-type" data-id="${type.id}" style="padding:2px 8px; background:#e53935; color:#fff; border:none;">削除</button>

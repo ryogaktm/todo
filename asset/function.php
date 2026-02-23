@@ -291,8 +291,10 @@ if ($action) {
     }
 
     // タグタイプ作成
+
     if ($action === 'tagtype_create') {
         $name = trim($_POST['name'] ?? '');
+        $is_multi = isset($_POST['is_multi']) && $_POST['is_multi'] == '1' ? 1 : 0;
         if (!$name) json_out(['ok' => false]);
 
         // 簡易ID採番
@@ -304,7 +306,7 @@ if ($action) {
         }
         $id = $max + 1;
         $fp = fopen($TAG_TYPES_CSV, 'a');
-        fputcsv($fp, [$id, $name, '', 0, date('c'), date('c')]);
+        fputcsv($fp, [$id, $name, '', $is_multi, date('c'), date('c')]);
         fclose($fp);
         json_out(['ok' => true]);
     }
@@ -330,17 +332,20 @@ if ($action) {
     }
 
 
-    // --- 追加: タグタイプ（グループ）の更新 ---
     if ($action === 'tagtype_update') {
         $id = (int)$_POST['id'];
         $name = trim($_POST['name'] ?? '');
+        $is_multi = isset($_POST['is_multi']) ? ($_POST['is_multi'] == '1' ? 1 : 0) : -1;
         if (!$id || !$name) json_out(['ok' => false]);
 
         $rows = [];
         if (($fp = fopen($TAG_TYPES_CSV, 'r')) !== false) {
             $header = fgetcsv($fp);
             while ($r = fgetcsv($fp)) {
-                if ((int)$r[0] === $id) $r[1] = $name;
+                if ((int)$r[0] === $id) {
+                    $r[1] = $name;
+                    if ($is_multi !== -1) $r[3] = $is_multi;
+                }
                 $r[5] = date('c');
                 $rows[] = $r;
             }

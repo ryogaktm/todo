@@ -239,12 +239,7 @@ include_once(__DIR__ . '/asset/function.php');
                 </div>
 
                 <div style="margin-top:10px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                        <label class="input-label" style="font-size:12px; color:#666;">タグ設定</label>
-                        <label style="font-size:11px; color:#888; cursor:pointer;">
-                            <input type="checkbox" id="tagModeToggle" style="vertical-align:middle;"> 複数選択を許可
-                        </label>
-                    </div>
+                    <label class="input-label" style="display:block; margin-bottom:4px; font-size:12px; color:#666;">タグ設定</label>
                     <div id="tagSelectContainer" style="background:#f9f9f9; padding:10px; border:1px solid #ddd; border-radius:4px; min-height:40px;"></div>
                 </div>
 
@@ -358,13 +353,18 @@ include_once(__DIR__ . '/asset/function.php');
                 <button class="btn" id="tagTypeModalClose">×</button>
             </header>
             <div class="body" style="background:#fff; color:#000; padding:20px;">
+
                 <div style="margin-bottom:20px; border-bottom:1px solid #ccc; padding-bottom:10px;">
                     <h4>タググループ追加（例: 案件名, 優先度）</h4>
-                    <div style="display:flex; gap:8px;">
+                    <div style="display:flex; gap:8px; align-items:center;">
                         <input type="text" id="newTagTypeName" placeholder="グループ名" style="background:#eee; color:#000; border:1px solid #999; flex:1; padding:8px;">
+                        <label style="font-size:12px; color:#333; cursor:pointer; white-space:nowrap;">
+                            <input type="checkbox" id="newTagTypeMulti" value="1" style="vertical-align:middle;"> 複数選択可
+                        </label>
                         <button class="btn" id="newTagTypeAddBtn">追加</button>
                     </div>
                 </div>
+
                 <div id="tagTypesList">
                 </div>
             </div>
