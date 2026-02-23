@@ -1580,8 +1580,9 @@ $card.off('dblclick').on('dblclick', function(e){
                 }
               }
   
-              if (App.tags && App.tags.renderCardTags) App.tags.renderCardTags($card);
+              if (App.tags && App.tags.renderCardTags) App.tags.renderCardTags($c);
               if (App.tags && App.tags.renderFilters) App.tags.renderFilters();
+              if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList(); 
               if (App.calendar && App.calendar.isActive()) App.calendar.render();
     
               closeModal();
@@ -1594,39 +1595,43 @@ $card.off('dblclick').on('dblclick', function(e){
           .always(resetSaving);
         } else {
           // ★更新の処理
-          const id = App.state.editingId;
-          App.api.post(App.api.url('?action=update'), { id, ...p })
-            .done(async json => {
-              if (json.ok){
-                const $card = $(`[data-id="${id}"]`);
-                if (!$card.length){ App.utils.showToast('カードが見つかりません'); resetSaving(); return; }
-        
-                if (typeof applyPayloadToCard === 'function') applyPayloadToCard($card, p);
-        
-                $card.data('raw_title', p.title);
-                $card.data('body', p.body);
-        
-                $card.attr('data-tags', (p.tag_ids || []).join(','));
-                $card.find('.title .t').text(p.title);
-                
-                // サーバーの最新タグ情報を読み込み
-                if (App.tags && App.tags.loadAll) await App.tags.loadAll();
-  
-                if (App.tags && App.tags.getColorForTask) {
-                  const color = App.tags.getColorForTask(id);
-                  if (color) {
-                      // ★修正：白文字が読めるようにベースの色を強制的に暗く（-80）する
-                      const baseColor = App.utils && App.utils.shade ? App.utils.shade(color, -80) : color;
-                      const darkColor = App.utils && App.utils.shade ? App.utils.shade(color, -120) : '#222';
-                      $card.css('background', `linear-gradient(180deg, ${baseColor}, ${darkColor})`)
-                           .css('border-color', 'rgba(255,255,255,.10)');
-                  } else {
-                      $card.css({ background:'', borderColor:'' });
-                  }
-              }
-        
-                if (App.tags && App.tags.renderFilters) App.tags.renderFilters();
-                if (App.calendar && App.calendar.isActive()) App.calendar.render();
+       // ★更新の処理
+       const id = App.state.editingId;
+       App.api.post(App.api.url('?action=update'), { id, ...p })
+         .done(async json => {
+           if (json.ok){
+             const $card = $(`[data-id="${id}"]`);
+             if (!$card.length){ App.utils.showToast('カードが見つかりません'); resetSaving(); return; }
+     
+             // ★修正: 集計や色塗りが走る「前」に、最新のタグデータをセットしておく
+             $card.attr('data-tags', (p.tag_ids || []).join(','));
+     
+             if (typeof applyPayloadToCard === 'function') applyPayloadToCard($card, p);
+     
+             $card.data('raw_title', p.title);
+             $card.data('body', p.body);
+             $card.find('.title .t').text(p.title);
+             
+             // サーバーの最新タグ情報を読み込み
+             if (App.tags && App.tags.loadAll) await App.tags.loadAll();
+
+             if (App.tags && App.tags.getColorForTask) {
+                 const color = App.tags.getColorForTask(id);
+                 if (color) {
+                     const baseColor = App.utils && App.utils.shade ? App.utils.shade(color, -80) : color;
+                     const darkColor = App.utils && App.utils.shade ? App.utils.shade(color, -120) : '#222';
+                     $card.css('background', `linear-gradient(180deg, ${baseColor}, ${darkColor})`)
+                          .css('border-color', 'rgba(255,255,255,.10)');
+                 } else {
+                     $card.css({ background:'', borderColor:'' });
+                 }
+             }
+     
+             if (App.tags && App.tags.renderCardTags) App.tags.renderCardTags($card);
+             if (App.tags && App.tags.renderFilters) App.tags.renderFilters();
+             // ★修正: フィルタボタンを作り直した直後に、もう一度件数を計算させる
+             if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList();
+             if (App.calendar && App.calendar.isActive()) App.calendar.render();
         
                 closeModal();
                 App.utils.showToast('更新しました');

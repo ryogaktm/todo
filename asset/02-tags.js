@@ -249,6 +249,7 @@ renderSelect(currentTagIds = []){
                     if (newTag) currentIds.push(Number(newTag.id));
                     App.tags.renderSelect(currentIds); 
                     App.tags.renderFilters(); 
+                    if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList(); // ★追加
                     // 再描画直後にポップアップを開き直す（行を強制クリック）
                     $selectContainer.find(`.trigger-row-${type.id}`).click();
                 });
@@ -306,9 +307,10 @@ getSelectedTagIds(){
                     App.api.post('?action=tagtype_create', { name, is_multi: isMulti }).done(async ()=>{
                         $('#newTagTypeName').val('');
                         $('#newTagTypeMulti').prop('checked', false);
-                        await this.loadAll();
-                        this.renderManageList();
-                        this.renderFilters();
+                        await App.tags.loadAll();
+                        App.tags.renderManageList();
+                        App.tags.renderFilters();
+                        if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList(); // ★追加
                     });
                 }
             });
@@ -433,6 +435,7 @@ getSelectedTagIds(){
                                 App.api.post('?action=tag_reorder', { ids }).done(async () => {
                                     await App.tags.loadAll();
                                     App.tags.renderFilters();
+                                    if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList(); // ★追加
                                 });
                             }
                         });
