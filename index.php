@@ -239,7 +239,12 @@ include_once(__DIR__ . '/asset/function.php');
                 </div>
 
                 <div style="margin-top:10px;">
-                    <label class="input-label" style="display:block; margin-bottom:4px; font-size:12px; color:#666;">タグ設定</label>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                        <label class="input-label" style="font-size:12px; color:#666;">タグ設定</label>
+                        <label style="font-size:11px; color:#888; cursor:pointer;">
+                            <input type="checkbox" id="tagModeToggle" style="vertical-align:middle;"> 複数選択を許可
+                        </label>
+                    </div>
                     <div id="tagSelectContainer" style="background:#f9f9f9; padding:10px; border:1px solid #ddd; border-radius:4px; min-height:40px;"></div>
                 </div>
 

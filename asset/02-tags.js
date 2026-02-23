@@ -60,86 +60,117 @@
                 const groupTags = TAGS.filter(t => t.type_id == type.id);
                 if(groupTags.length === 0) return;
 
-                const $group = $(`<div style="display:inline-block; margin-right:15px; margin-bottom:5px;"></div>`);
-                $group.append(`<span style="color:#888; font-size:11px; margin-right:4px;">${type.name}:</span>`);
+            // 変更前: const $group = $(`<div style="display:flex; ..."></div>`);
+            const $group = $(`<div class="tag-filter-group"></div>`);
                 
-                groupTags.forEach(tag => {
-                    const $btn = $(`<button class="btn btn-sm tag-filter-btn" data-id="${tag.id}" style="border-left:3px solid ${tag.color}; margin-right:2px;">${tag.name}</button>`);
-                    $btn.on('click', function(){
-                        $(this).toggleClass('active');
-                        // フィルタ適用ロジック（簡易的）
-                        const activeIds = [];
-                        $('.tag-filter-btn.active').each(function(){ activeIds.push(Number($(this).data('id'))); });
-                        
-                        $('.card').each(function(){
-                            const tid = Number($(this).attr('data-id'));
-                            const myTags = App.tags.getTagsForTask(tid);
-                            // 選択されたタグをすべて持っているか（AND検索）
-                            const hit = activeIds.every(id => myTags.includes(id));
-                            if(hit) $(this).css('opacity', 1).css('pointer-events', 'auto');
-                            else    $(this).css('opacity', 0.1).css('pointer-events', 'none');
-                        });
-                    });
-                    $group.append($btn);
+            // 変更前: $group.append(`<span style="color:#bbb; ...">${type.name}</span>`);
+            $group.append(`<span class="tag-filter-label">${type.name}</span>`);
+            
+            groupTags.forEach(tag => {
+                // ★ボタンに data-name を追加し、初期表示を (0) にする
+                const $btn = $(`<button class="tag-filter-btn" data-id="${tag.id}" data-name="${tag.name}" style="border-left-color: ${tag.color};">${tag.name} (0)</button>`);
+                
+                $btn.on('click', function(){
+                    $(this).toggleClass('active');
+                    // ★独自処理を消し、メインの絞り込み処理に合流させる
+                    if (App.tasks && App.tasks.applyBallFilterAndRenderList) {
+                        App.tasks.applyBallFilterAndRenderList();
+                    }
                 });
+                $group.append($btn);
+            });
                 $filterContainer.append($group);
             });
         },
 
         // タスク編集モーダル内の描画
-        renderSelect(currentTagIds = []){
-            $selectContainer.empty();
-            if(TAG_TYPES.length === 0) {
-                $selectContainer.html('<div style="color:#aaa">タググループがありません。「タグ管理」から作成してください。</div>');
-                return;
-            }
+// タスク編集モーダル内の描画
+renderSelect(currentTagIds = []){
+    $selectContainer.empty();
+    if(TAG_TYPES.length === 0) {
+        $selectContainer.html('<div style="color:#aaa">タググループがありません。「タグ管理」から作成してください。</div>');
+        return;
+    }
 
-            TAG_TYPES.forEach(type => {
-                const groupTags = TAGS.filter(t => t.type_id == type.id);
-                
-                const $row = $(`<div style="margin-bottom:8px; border-bottom:1px solid #444; padding-bottom:4px;"></div>`);
-                $row.append(`<div style="font-size:12px; color:#aaa; margin-bottom:4px;">${type.name}</div>`);
-                
-                const $wrap = $(`<div style="display:flex; flex-wrap:wrap; gap:8px;"></div>`);
-                
-                if(groupTags.length === 0) {
-                    $wrap.append('<span style="font-size:10px; color:#666;">タグなし</span>');
-                }
+    // トグルスイッチの状態（複数選択モードか？）を取得
+    const isMultiMode = $('#tagModeToggle').is(':checked');
 
-                groupTags.forEach(tag => {
-                    const isChecked = currentTagIds.includes(Number(tag.id));
-                    const $label = $(`
-                        <label style="display:flex; align-items:center; background:#444; padding:2px 6px; border-radius:4px; font-size:12px;">
-                            <input type="checkbox" name="tags[]" value="${tag.id}" ${isChecked ? 'checked' : ''} style="margin-right:4px;">
-                            ${tag.name}
-                        </label>
-                    `);
-                    $wrap.append($label);
-                });
-                
-                // その場でタグ追加ボタン
-                const $addBtn = $(`<button style="font-size:10px; background:#555; border:none; color:#fff; cursor:pointer;">+追加</button>`);
-                $addBtn.on('click', ()=>{
-                    const newName = prompt(`${type.name} に新しいタグを追加:`);
-                    if(newName){
-                        App.api.post('?action=tag_create', { type_id: type.id, name: newName, color: getRandomColor() })
-                        .done(async ()=>{ await this.loadAll(); this.renderSelect(currentTagIds); this.renderFilters(); });
-                    }
-                });
-                $wrap.append($addBtn);
-
-                $row.append($wrap);
-                $selectContainer.append($row);
-            });
-        },
+    TAG_TYPES.forEach(type => {
+        const groupTags = TAGS.filter(t => t.type_id == type.id);
         
-        getSelectedTagIds(){
-            const ids = [];
-            $selectContainer.find('input[type="checkbox"]:checked').each(function(){
-                ids.push($(this).val());
-            });
-            return ids;
-        },
+        const $row = $(`<div style="margin-bottom:8px; border-bottom:1px solid #444; padding-bottom:4px;"></div>`);
+        $row.append(`<div style="font-size:12px; color:#aaa; margin-bottom:4px;">${type.name}</div>`);
+        
+        const $wrap = $(`<div style="display:flex; flex-wrap:wrap; gap:8px;"></div>`);
+        
+        // 単一選択（ラジオ）の場合のクリアボタン
+        if (!isMultiMode) {
+            const $clearLabel = $(`
+                <label style="display:flex; align-items:center; background:#555; color:#ccc; padding:2px 6px; border-radius:4px; font-size:12px; cursor:pointer;">
+                    <input type="radio" name="tags_${type.id}" value="" style="margin-right:4px;">
+                    (なし)
+                </label>
+            `);
+            $wrap.append($clearLabel);
+        } else if(groupTags.length === 0) {
+            $wrap.append('<span style="font-size:10px; color:#666;">タグなし</span>');
+        }
+
+        groupTags.forEach(tag => {
+            const isChecked = currentTagIds.includes(Number(tag.id));
+            
+            // モードに応じて input type を切り替え
+            const inputType = isMultiMode ? 'checkbox' : 'radio';
+            // ラジオの場合はグループごとに同じ name を付ける
+            const inputName = isMultiMode ? 'tags[]' : `tags_${type.id}`;
+
+            const $label = $(`
+                <label style="display:flex; align-items:center; background:#444; padding:2px 6px; border-radius:4px; font-size:12px; cursor:pointer;">
+                    <input type="${inputType}" name="${inputName}" value="${tag.id}" ${isChecked ? 'checked' : ''} style="margin-right:4px;">
+                    ${tag.name}
+                </label>
+            `);
+            $wrap.append($label);
+        });
+        
+        // その場でタグ追加ボタン
+        const $addBtn = $(`<button type="button" style="font-size:10px; background:#555; border:none; color:#fff; cursor:pointer; padding:2px 6px; border-radius:4px;">+追加</button>`);
+        $addBtn.on('click', ()=>{
+            const newName = prompt(`${type.name} に新しいタグを追加:`);
+            if(newName){
+                App.api.post('?action=tag_create', { type_id: type.id, name: newName, color: getRandomColor() })
+                .done(async ()=>{ 
+                    await this.loadAll(); 
+                    // 追加したタグも選択状態にするためにIDを追加
+                    const newTag = TAGS.find(t => t.name === newName && t.type_id === type.id);
+                    if (newTag) currentTagIds.push(Number(newTag.id));
+                    this.renderSelect(currentTagIds); 
+                    this.renderFilters(); 
+                });
+            }
+        });
+        $wrap.append($addBtn);
+
+        $row.append($wrap);
+        $selectContainer.append($row);
+    });
+
+    // トグルが切り替わった時に再描画するイベントを（一度だけ）登録
+    $('#tagModeToggle').off('change.tagMode').on('change.tagMode', () => {
+        // 現在選択されているIDを引き継いで再描画
+        this.renderSelect(this.getSelectedTagIds().map(Number));
+    });
+},
+        
+getSelectedTagIds(){
+    const ids = [];
+    // チェックボックスとラジオボタンの両方から取得
+    $selectContainer.find('input:checked').each(function(){
+        const val = $(this).val();
+        if (val) ids.push(Number(val));
+    });
+    return ids;
+},
 
         bindEvents(){
             $('#btnManageTags').on('click', ()=> {
@@ -158,12 +189,105 @@
                     });
                 }
             });
+
+            // ▼ 追加: グループの編集
+            $manageList.on('click', '.btn-edit-type', function(){
+                const id = $(this).data('id');
+                const oldName = $(this).data('name');
+                const newName = prompt('グループ名を変更:', oldName);
+                if(newName && newName.trim() !== '' && newName !== oldName){
+                    App.api.post('?action=tagtype_update', { id: id, name: newName.trim() }).done(async ()=>{
+                        await App.tags.loadAll();
+                        App.tags.renderManageList();
+                        App.tags.renderFilters();
+                        if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList();
+                    });
+                }
+            });
+
+            // ▼ 追加: グループの削除
+            $manageList.on('click', '.btn-del-type', function(){
+                if(confirm('このグループと、中に含まれるすべてのタグを削除しますか？')){
+                    const id = $(this).data('id');
+                    App.api.post('?action=tagtype_delete', { id: id }).done(async ()=>{
+                        await App.tags.loadAll();
+                        App.tags.renderManageList();
+                        App.tags.renderFilters();
+                        if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList();
+                    });
+                }
+            });
+
+            // ▼ 追加: タグ自体の編集
+            $manageList.on('click', '.btn-edit-tag', function(){
+                const id = $(this).data('id');
+                const oldName = $(this).data('name');
+                const newName = prompt('タグ名を変更:', oldName);
+                if(newName && newName.trim() !== '' && newName !== oldName){
+                    App.api.post('?action=tag_update', { id: id, name: newName.trim() }).done(async ()=>{
+                        await App.tags.loadAll();
+                        App.tags.renderManageList();
+                        App.tags.renderFilters();
+                        if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList();
+                    });
+                }
+            });
+
+            // ▼ 追加: タグ自体の削除
+            $manageList.on('click', '.btn-del-tag', function(){
+                if(confirm('このタグを削除しますか？')){
+                    const id = $(this).data('id');
+                    App.api.post('?action=tag_delete', { id: id }).done(async ()=>{
+                        await App.tags.loadAll();
+                        App.tags.renderManageList();
+                        App.tags.renderFilters();
+                        if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList();
+                    });
+                }
+            });
         },
 
         renderManageList(){
             $manageList.empty();
             TAG_TYPES.forEach(type => {
-                const $div = $(`<div style="padding:5px; border-bottom:1px solid #eee;">${type.name}</div>`);
+                const groupTags = TAGS.filter(t => t.type_id == type.id);
+                
+                // グループ名の行（右側に編集・削除ボタン）
+                const $div = $(`
+                    <div style="padding:10px; border-bottom:1px solid #ddd; background:#f9f9f9; margin-bottom:8px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <span style="font-size:14px; font-weight:bold; color:#333;">${App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(type.name) : type.name}</span>
+                            <div>
+                                <button class="btn btn-sm btn-edit-type" data-id="${type.id}" data-name="${type.name}" style="padding:2px 8px; margin-right:4px;">編集</button>
+                                <button class="btn btn-sm btn-del-type" data-id="${type.id}" style="padding:2px 8px; background:#e53935; color:#fff; border:none;">削除</button>
+                            </div>
+                        </div>
+                        <div class="tags-in-group" style="padding-left:10px;"></div>
+                    </div>
+                `);
+
+                const $tagsContainer = $div.find('.tags-in-group');
+                
+                if (groupTags.length === 0) {
+                    $tagsContainer.append('<div style="font-size:12px; color:#888;">中にタグがありません</div>');
+                } else {
+                    // タグごとの行（右側に編集・削除ボタン）
+                    groupTags.forEach(tag => {
+                        const $tagRow = $(`
+                            <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px dashed #ccc;">
+                                <span style="font-size:13px; color:#555;">
+                                    <span style="display:inline-block; width:12px; height:12px; background:${tag.color}; margin-right:6px; border-radius:2px;"></span>
+                                    ${App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(tag.name) : tag.name}
+                                </span>
+                                <div>
+                                    <button class="btn btn-sm btn-edit-tag" data-id="${tag.id}" data-name="${tag.name}" style="padding:2px 6px; font-size:11px; margin-right:4px; background:#fff; color:#333; border:1px solid #ccc;">編集</button>
+                                    <button class="btn btn-sm btn-del-tag" data-id="${tag.id}" style="padding:2px 6px; font-size:11px; background:#fff; color:#e53935; border:1px solid #ccc;">削除</button>
+                                </div>
+                            </div>
+                        `);
+                        $tagsContainer.append($tagRow);
+                    });
+                }
                 $manageList.append($div);
             });
         }

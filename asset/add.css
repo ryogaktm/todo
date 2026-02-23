@@ -652,7 +652,7 @@ ease-in-out infinite;
 
 /* ── フィルタ帯 ─────────────────────────────── */
 .filter-bar{
-  display:flex;
+  display:block;
   gap: 8px;
   padding: 3px 10px;
   border-bottom: 1px solid rgba(255,255,255,.08);
@@ -827,7 +827,7 @@ ease-in-out infinite;
 /* 【修正後】 (add.css の末尾に追加) */
 
 #tagSelectContainer {
-  display: flex;
+  display: block;
   flex-wrap: wrap;
   gap: 8px;
   max-height: 150px;
@@ -858,4 +858,46 @@ ease-in-out infinite;
   margin: 0 6px 0 0;
   width: auto;
   height: auto;
+}
+
+/* =========================================
+   タグフィルタ用のスタイル
+   ========================================= */
+/* グループ（行）のまとまり */
+.tag-filter-group {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  gap: 6px;
+}
+
+/* 左側のカテゴリー名 */
+.tag-filter-label {
+  color: #bbb;
+  font-size: 12px;
+  font-weight: bold;
+  min-width: 80px;
+}
+
+/* タグボタンの基本スタイル */
+.tag-filter-btn {
+  background: #333;
+  color: #fff;
+  font-size: 12px;
+  padding: 2px 8px;
+  border: none;
+  border-radius: 4px;
+  border-left: 4px solid transparent; /* 色はJSで動的に上書きされる */
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+
+/* ホバー時や選択時のスタイルもCSSで一括管理 */
+.tag-filter-btn:hover {
+  filter: brightness(1.2);
+}
+.tag-filter-btn.active {
+  background: #555;
+  /* 必要に応じて選択中の強調スタイルを追加 */
 }

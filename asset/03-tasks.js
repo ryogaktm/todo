@@ -574,6 +574,7 @@ function applyBallFilterAndRenderList(){
 
   // カテゴリ側カウント
   const catCounts = {};
+  const tagCounts = {};
 
   // 日付差分ヘルパ
   const today   = App.utils.today();
@@ -625,11 +626,20 @@ function applyBallFilterAndRenderList(){
     // C. カテゴリフィルタ一致？
     const fitsCat = (activeCat === 0 || catId === activeCat);
 
-    // D. テキスト検索一致？
-    const fitsText = matchTextFilter($c);
+  // D. テキスト検索一致？
+  const fitsText = matchTextFilter($c);
 
-    // E. このカードをハイライト対象にする？
-    const highlight = (fitsSide && fitsDue && fitsCat && fitsText);
+  //  タグフィルタ一致？
+  let fitsTag = true;
+  const activeIds = [];
+  $('.tag-filter-btn.active').each(function(){ activeIds.push(Number($(this).data('id'))); });
+  if (activeIds.length > 0) {
+      const myTags = ($c.attr('data-tags') || '').split(',').map(Number);
+      fitsTag = activeIds.every(id => myTags.includes(id));
+  }
+
+  // E. このカードをハイライト対象にする？（fitsTagを追加）
+  const highlight = (fitsSide && fitsDue && fitsCat && fitsText && fitsTag);
 
     // 表示は常に DOM に残す。対象外は半透明
     $c.removeClass('ball-hide');
@@ -655,38 +665,46 @@ function applyBallFilterAndRenderList(){
 
     // ==== 数字集計 ====
 
-    // 1) ボール側カウント
-    if (fitsDue && fitsCat && fitsText && (side === 0 || side === 1 || side === 2)){
-      sideCounts.all++;
-      if (side === 0)      sideCounts.mine++;
-      else if (side === 1) sideCounts.theirs++;
-      else if (side === 2) sideCounts.prod++;
-    }
+   // 1) ボール側カウント
+   if (fitsDue && fitsCat && fitsText && fitsTag && (side === 0 || side === 1 || side === 2)){
+    sideCounts.all++;
+    if (side === 0)      sideCounts.mine++;
+    else if (side === 1) sideCounts.theirs++;
+    else if (side === 2) sideCounts.prod++;
+  }
 
-    // 2) 期限側カウント
-    if (fitsSide && fitsCat && fitsText && (side === 0 || side === 1)){
-      dueCounts.all++;
+  // 2) 期限側カウント
+  if (fitsSide && fitsCat && fitsText && fitsTag && (side === 0 || side === 1)){
+    dueCounts.all++;
 
-      if (diffDays === null){
-        dueCounts.none++;
-      } else {
-        if (diffDays < 0){   dueCounts.overdue++; }
-        if (diffDays <= 0){  dueCounts.today++;   }
-        if (diffDays <= 1){  dueCounts.tomorrow++; }
-        if (diffDays <= 2){  dueCounts.dayafter++; }
-        if (diffDays <= 7){  dueCounts.week++;    }
-        if (diffDays <= 30){ dueCounts.month++;   }
-        if (diffDays > 30){  dueCounts.later++;   }
-      }
+    if (diffDays === null){
+      dueCounts.none++;
+    } else {
+      if (diffDays < 0){   dueCounts.overdue++; }
+      if (diffDays <= 0){  dueCounts.today++;   }
+      if (diffDays <= 1){  dueCounts.tomorrow++; }
+      if (diffDays <= 2){  dueCounts.dayafter++; }
+      if (diffDays <= 7){  dueCounts.week++;    }
+      if (diffDays <= 30){ dueCounts.month++;   }
+      if (diffDays > 30){  dueCounts.later++;   }
     }
+  }
 
-    // 3) カテゴリ側カウント
-    if (fitsSide && fitsDue && fitsText && (side === 0 || side === 1)){
-      const key = String(catId);
-      if (!catCounts[key]) catCounts[key] = 0;
-      catCounts[key]++;
-    }
-  }); // each card
+  // 3) カテゴリ側カウント
+  if (fitsSide && fitsDue && fitsText && fitsTag && (side === 0 || side === 1)){
+    const key = String(catId);
+    if (!catCounts[key]) catCounts[key] = 0;
+    catCounts[key]++;
+  }
+
+  // ★追加: 4) タグ側カウント
+  if (fitsSide && fitsDue && fitsCat && fitsText){
+    const myTags = ($c.attr('data-tags') || '').split(',').map(Number).filter(n => n > 0);
+    myTags.forEach(tid => {
+        tagCounts[tid] = (tagCounts[tid] || 0) + 1;
+    });
+  }
+}); // each card
 
   // ==== 右パネル再描画 ====
   renderBallTwoCols(mineItems, theirsItems, prodItems);
@@ -723,17 +741,27 @@ function applyBallFilterAndRenderList(){
   });
 
   // ==== カテゴリ帯の数字更新 ====
-  let totalForAllCats = 0;
-  Object.values(catCounts).forEach(n => { totalForAllCats += n; });
+  
+let totalForAllCats = 0;
+Object.values(catCounts).forEach(n => { totalForAllCats += n; });
 
-  $('#categoryBar .category-chip').each(function(){
-    const $chip = $(this);
-    const cid = String($chip.data('id') || '0');
-    const n = (cid === '0')
-      ? totalForAllCats
-      : (catCounts[cid] || 0);
-    $chip.find('.count').text(`（${n}）`);
-  });
+$('#categoryBar .category-chip').each(function(){
+  const $chip = $(this);
+  const cid = String($chip.data('id') || '0');
+  const n = (cid === '0')
+    ? totalForAllCats
+    : (catCounts[cid] || 0);
+  $chip.find('.count').text(`（${n}）`);
+});
+
+// ★追加: ==== タグ帯の数字更新 ====
+$('.tag-filter-btn').each(function(){
+    const $btn = $(this);
+    const tid = Number($btn.data('id'));
+    const tagName = $btn.data('name') || '';
+    const count = tagCounts[tid] || 0;
+    $btn.text(`${tagName} (${count})`);
+});
 }
 
 

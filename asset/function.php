@@ -329,6 +329,108 @@ if ($action) {
         json_out(['ok' => true]);
     }
 
+
+    // --- 追加: タグタイプ（グループ）の更新 ---
+    if ($action === 'tagtype_update') {
+        $id = (int)$_POST['id'];
+        $name = trim($_POST['name'] ?? '');
+        if (!$id || !$name) json_out(['ok' => false]);
+
+        $rows = [];
+        if (($fp = fopen($TAG_TYPES_CSV, 'r')) !== false) {
+            $header = fgetcsv($fp);
+            while ($r = fgetcsv($fp)) {
+                if ((int)$r[0] === $id) $r[1] = $name;
+                $r[5] = date('c');
+                $rows[] = $r;
+            }
+            fclose($fp);
+        }
+        $fp = fopen($TAG_TYPES_CSV, 'w');
+        fputcsv($fp, ['id', 'name', 'color', 'order', 'created_at', 'updated_at']);
+        foreach ($rows as $r) fputcsv($fp, $r);
+        fclose($fp);
+        json_out(['ok' => true]);
+    }
+
+    // --- 追加: タグタイプ（グループ）の削除 ---
+    if ($action === 'tagtype_delete') {
+        $id = (int)$_POST['id'];
+        if (!$id) json_out(['ok' => false]);
+
+        $rows = [];
+        if (($fp = fopen($TAG_TYPES_CSV, 'r')) !== false) {
+            $header = fgetcsv($fp);
+            while ($r = fgetcsv($fp)) {
+                if ((int)$r[0] !== $id) $rows[] = $r;
+            }
+            fclose($fp);
+        }
+        $fp = fopen($TAG_TYPES_CSV, 'w');
+        fputcsv($fp, ['id', 'name', 'color', 'order', 'created_at', 'updated_at']);
+        foreach ($rows as $r) fputcsv($fp, $r);
+        fclose($fp);
+
+        // 紐づくタグも道連れに削除
+        $tagRows = [];
+        if (($fp = fopen($TAGS_CSV, 'r')) !== false) {
+            $header = fgetcsv($fp);
+            while ($r = fgetcsv($fp)) {
+                if ((int)$r[1] !== $id) $tagRows[] = $r;
+            }
+            fclose($fp);
+        }
+        $fp = fopen($TAGS_CSV, 'w');
+        fputcsv($fp, ['id', 'type_id', 'name', 'color', 'created_at', 'updated_at']);
+        foreach ($tagRows as $r) fputcsv($fp, $r);
+        fclose($fp);
+
+        json_out(['ok' => true]);
+    }
+
+    // --- 追加: タグ名の更新 ---
+    if ($action === 'tag_update') {
+        $id = (int)$_POST['id'];
+        $name = trim($_POST['name'] ?? '');
+        if (!$id || !$name) json_out(['ok' => false]);
+
+        $rows = [];
+        if (($fp = fopen($TAGS_CSV, 'r')) !== false) {
+            $header = fgetcsv($fp);
+            while ($r = fgetcsv($fp)) {
+                if ((int)$r[0] === $id) $r[2] = $name;
+                $r[5] = date('c');
+                $rows[] = $r;
+            }
+            fclose($fp);
+        }
+        $fp = fopen($TAGS_CSV, 'w');
+        fputcsv($fp, ['id', 'type_id', 'name', 'color', 'created_at', 'updated_at']);
+        foreach ($rows as $r) fputcsv($fp, $r);
+        fclose($fp);
+        json_out(['ok' => true]);
+    }
+
+    // --- 追加: タグの削除 ---
+    if ($action === 'tag_delete') {
+        $id = (int)$_POST['id'];
+        if (!$id) json_out(['ok' => false]);
+
+        $rows = [];
+        if (($fp = fopen($TAGS_CSV, 'r')) !== false) {
+            $header = fgetcsv($fp);
+            while ($r = fgetcsv($fp)) {
+                if ((int)$r[0] !== $id) $rows[] = $r;
+            }
+            fclose($fp);
+        }
+        $fp = fopen($TAGS_CSV, 'w');
+        fputcsv($fp, ['id', 'type_id', 'name', 'color', 'created_at', 'updated_at']);
+        foreach ($rows as $r) fputcsv($fp, $r);
+        fclose($fp);
+        json_out(['ok' => true]);
+    }
+
     // サブタスクカウント
     if ($action === 'subcounts') {
         $idsRaw = $_POST['ids'] ?? '';
