@@ -99,26 +99,37 @@ renderSelect(currentTagIds = []){
         // 選択されているタグを抽出
         const selectedTags = groupTags.filter(tag => currentTagIds.includes(Number(tag.id)));
         
-        // --- スッキリ表示（行全体をクリック可能にする） ---
-        const $row = $(`<div class="tag-display-row" style="display:flex; align-items:flex-start; margin-bottom:8px; border-bottom:1px solid #444; padding-bottom:4px; min-height:24px; cursor:pointer;"></div>`);
-        
-        const $titleWrap = $(`<div style="width:100px; font-size:12px; color:#aaa; padding-top:4px;">${type.name}</div>`);
-        const $tagsWrap = $(`<div style="flex:1; display:flex; flex-wrap:wrap; gap:4px; align-items:center;"></div>`);
+   
+// --- スッキリ表示（行全体をクリック可能にする） ---
+                // クラス名だけを付与。イベント用に trigger-row-ID も付与。
+                const $row = $(`<div class="tag-display-row trigger-row-${type.id}"></div>`);
+                
+                const modeLabelClass = isMultiMode ? 'mode-multi' : 'mode-single';
+                const modeLabelText  = isMultiMode ? '(複数選択可)' : '(単一選択)';
+                
+                const $titleWrap = $(`
+                    <div class="tag-row-title-wrap">
+                        <span class="tag-row-title">${type.name}</span>
+                        <span class="tag-row-mode ${modeLabelClass}">${modeLabelText}</span>
+                    </div>
+                `);
 
-        if (selectedTags.length === 0) {
-            $tagsWrap.append(`<span style="font-size:12px; color:#666; padding-top:4px;">（未選択）</span>`);
-        } else {
-            selectedTags.forEach(tag => {
-                $tagsWrap.append(`<span style="font-size:12px; background:#444; padding:2px 8px; border-radius:12px; color:#fff; border-left:3px solid ${tag.color}; pointer-events:none;">${tag.name}</span>`);
-            });
-        }
+                const $tagsWrap = $(`<div class="tag-row-tags-wrap"></div>`);
 
-        // 右端に「▼」のようなアイコンを薄く表示しておくと、押せる感がアップします
-        const $iconWrap = $(`<div style="color:#666; font-size:10px; padding-top:6px; margin-left:auto;">▼</div>`);
-        
-        $row.append($titleWrap);
-        $row.append($tagsWrap);
-        $row.append($iconWrap);
+                if (selectedTags.length === 0) {
+                    $tagsWrap.append(`<span class="tag-empty-text">（未選択）</span>`);
+                } else {
+                    selectedTags.forEach(tag => {
+                        // 色だけは動的データなのでJSで指定
+                        $tagsWrap.append(`<span class="tag-selected-badge" style="border-left-color: ${tag.color};">${tag.name}</span>`);
+                    });
+                }
+
+                const $iconWrap = $(`<div class="tag-row-icon">▼</div>`);
+                
+                $row.append($titleWrap);
+                $row.append($tagsWrap);
+                $row.append($iconWrap);
 
         // --- 隠しポップアップ（選択肢一覧） ---
         const $popup = $(`<div style="display:none; width:100%; background:#222; border:1px solid #555; border-radius:4px; padding:10px; margin-bottom:12px; box-shadow:0 4px 12px rgba(0,0,0,0.5);"></div>`);
