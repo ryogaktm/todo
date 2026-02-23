@@ -2433,6 +2433,7 @@ Object.assign(App.tasks, {
   loadAll: async function(){
     return App.api.get(App.api.url('?action=list')).done(json=>{
       if (json.ok){
+        $('#board .card').remove(); // ★ 追加: 既存のカードをすべて消してから再描画する
         (json.items||[]).forEach(addCard);
         refreshSubCounts();
         // ★ここをタグ用に書き換え

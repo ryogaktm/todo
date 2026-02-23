@@ -350,17 +350,18 @@ $manageList.on('change', '.cb-multi-toggle', function(){
     }
 
     App.api.post('?action=tagtype_update', { id: id, name: name, is_multi: isMulti }).done(async ()=>{
+        // ★修正: 画面を更新する前に、必ずタグの最新データを読み込む
+        await App.tags.loadAll();
+        
         // タスクカードのタグ状態を完全に反映させるため再読み込み
         if (App.tasks && App.tasks.loadAll) {
             await App.tasks.loadAll(); 
         } else {
-            await App.tags.loadAll();
             App.tags.renderFilters();
         }
         App.tags.renderManageList();
     });
 });
-
             // ▼ 追加: グループの削除
             $manageList.on('click', '.btn-del-type', function(){
                 if(confirm('このグループと、中に含まれるすべてのタグを削除しますか？')){
