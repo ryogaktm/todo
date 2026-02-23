@@ -27,9 +27,13 @@ body {
 
 /* ===== Header ===== */
 header {
-  position: sticky; top: 0; z-index: 10;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 18px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 18px;
   background: linear-gradient(180deg, rgba(9,12,26,.9), rgba(9,12,26,.65));
   backdrop-filter: blur(6px);
   border-bottom: 1px solid rgba(255,255,255,.06);
@@ -49,7 +53,7 @@ header {
   font-weight: 600;
   letter-spacing: .2px;
   border: navajowhite;
-  font-size: 13px;
+  font-size: 12px;
 }
 .btn:hover { filter: brightness(1.08); }
 
@@ -118,9 +122,10 @@ header {
 }
 
 #board .card {
-  transform: scale(var(--card-scale));
-  transform-origin: top left; /* 左上を基準に縮小/拡大 */
-  transition: transform 0.2s ease; /* ふわっと縮むように */
+  /* ★修正：中心位置(-50%, -50%)を保ったまま縮小させる */
+  transform: translate(-50%, -50%) scale(var(--card-scale));
+  transform-origin: center center; /* 中央を基準に縮小/拡大 */
+  transition: transform 0.2s ease; 
 }
 
 
@@ -654,8 +659,9 @@ ease-in-out infinite;
 .filter-bar{
   display:block;
   gap: 8px;
-  padding: 3px 10px;
+  padding: 1px 10px;
   border-bottom: 1px solid rgba(255,255,255,.08);
+  margin-bottom: 0;
 }
 
 .btn.is-active{
@@ -868,7 +874,7 @@ ease-in-out infinite;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  margin-bottom: 8px;
+  margin-bottom: 3px;
   gap: 6px;
 }
 
@@ -972,7 +978,7 @@ ease-in-out infinite;
 .tag-row-title {
     font-size: 12px;
     font-weight: bold;
-    color: #ccc;
+    color: #000000;
 }
 
 .tag-row-mode {
@@ -983,7 +989,7 @@ ease-in-out infinite;
     color: #4CAF50; /* 緑 */
 }
 .tag-row-mode.mode-single {
-    color: #888; /* グレー */
+    color: #000000; /* グレー */
 }
 
 .tag-row-tags-wrap {
@@ -1034,4 +1040,8 @@ ease-in-out infinite;
     border-left: 3px solid transparent; /* 色はJSで指定 */
     line-height: 1.2;
     white-space: nowrap;
+}
+
+.tag-filter-container{
+  margin-top: 5px;
 }

@@ -494,29 +494,22 @@ function updateFilterCountBadges(counts){
 
 
 // === カード枚数に応じて .card を縮小 ===
-// 一画面で表示する.cardの数が 30 だったら 0.9
-// その後、数が 5 増えるごとに 0.05 ずつ scale が減る
-// 例: 30枚 → 0.9, 35枚 → 0.85, 40枚 → 0.80 ...
-// 最低でも 0.5 までに制限
 function updateCardScale(){
-  // 「画面に出しているカード」の数
-  // display:none されているものは除外したいので :visible を使用
-  const count = $('#board .card:visible').length;
+  // 「いま画面上でアクティブに見えているカード」の数を数える
+  // フィルタで半透明（.ball-dim）や非表示（.ball-hide）になっているものは除外
+  const count = $('#board .card').not('.ball-hide').not('.ball-dim').filter(':visible').length;
 
-  let scale = 1;
+  let scale = 1.0;
 
-  if (count > 0){
-    if (count <= 100){
-      scale = 0.9;
-    } else {
-      const extra = count - 100;
-      const steps = Math.ceil(extra / 5); // 5枚ごとに1ステップ
-      scale = 0.9 - steps * 0.05;
-    }
+  // 12枚までは通常の大きさ(1.0)。そこから1枚増えるごとに 0.015 ずつ小さくする
+  if (count > 12){
+    const extra = count - 12;
+    scale = 1.0 - (extra * 0.015);
   }
 
-  // あまり小さくなり過ぎないように下限を設定（お好みで変えてOK）
-  if (scale < 0.5) scale = 0.5;
+  // 限界まで小さくならないよう、下限を 0.6 に設定（お好みで変えてOKです）
+  if (scale < 0.6) scale = 0.6;
+  if (scale > 1.0) scale = 1.0;
 
   // CSS 変数に反映
   $('#board').css('--card-scale', scale);
@@ -776,6 +769,9 @@ $('.tag-filter-btn').each(function(){
   const count = tagCounts[tid] || 0;
   $btn.text(`${tagName} (${count})`);
 });
+
+// ★追加: 絞り込みが終わって表示件数が確定したので、スケールを再計算する
+updateCardScale();
 }
 
 
@@ -1101,17 +1097,26 @@ App.tasks.renderCardTitle = renderCardTitle;
   
       $el.data('raw_title', item.title || '');
       $el.find('.title .t').text(item.title || '');
-      $el.css({ left: item.left_pct + '%', top: item.top_pct + '%' });
+
+      // ★修正：端に行き過ぎないように、透明な壁（左5〜95%、上8〜92%）を作る
+      const safeLeft = Math.max(5, Math.min(95, parseFloat(item.left_pct) || 50));
+      const safeTop  = Math.max(8, Math.min(92, parseFloat(item.top_pct)  || 50));
+      $el.css({ left: safeLeft + '%', top: safeTop + '%' });
+      // はみ出していた場合は、内部のデータも安全な値に上書きしておく
+      $el.attr('data-left', safeLeft).attr('data-top', safeTop);
+
       $el.data('body', item.body || '');
 
       if (App.tags && App.tags.getColorForTask) {
-          const color = App.tags.getColorForTask(item.id);
-          if (color) {
-              const dark = App.utils && App.utils.shade ? App.utils.shade(color, -40) : '#222';
-              $el.css('background', `linear-gradient(180deg, ${color}, ${dark})`)
-                 .css('border-color', 'rgba(255,255,255,.10)');
-          }
-      }
+        const color = App.tags.getColorForTask(item.id);
+        if (color) {
+            // ★修正：白文字が読めるようにベースの色を強制的に暗く（-80）する
+            const baseColor = App.utils && App.utils.shade ? App.utils.shade(color, -80) : color;
+            const darkColor = App.utils && App.utils.shade ? App.utils.shade(color, -120) : '#222';
+            $el.css('background', `linear-gradient(180deg, ${baseColor}, ${darkColor})`)
+               .css('border-color', 'rgba(255,255,255,.10)');
+        }
+    }
   
       $el.attr('data-ball-side', String(item.ball_side ?? 0));
       $el.attr('data-ball-due',  item.ball_due || '');
@@ -1245,19 +1250,22 @@ App.tasks.renderCardTitle = renderCardTitle;
         }
         if (!isDragging) return; // まだタップ中
     
-        // 本格ドラッグ中だけ既定動作を止める
-        e.preventDefault();
+// 本格ドラッグ中だけ既定動作を止める
+e.preventDefault();
     
-        let nx = cardLeft + dx - rect.left;
-        let ny = cardTop  + dy - rect.top;
-        nx = Math.max(0, Math.min(rect.width,  nx));
-        ny = Math.max(0, Math.min(rect.height, ny));
-        const leftPct = (nx / rect.width) * 100;
-        const topPct  = (ny / rect.height) * 100;
-    
-        $card.css({ left: leftPct + '%', top: topPct + '%' })
-             .attr('data-left', leftPct).attr('data-top', topPct);
-      };
+let nx = cardLeft + dx - rect.left;
+let ny = cardTop  + dy - rect.top;
+
+let leftPct = (nx / rect.width) * 100;
+let topPct  = (ny / rect.height) * 100;
+
+// ★修正：ドラッグ時も端に行き過ぎないように制限（上を8%で止める）
+leftPct = Math.max(5, Math.min(95, leftPct));
+topPct  = Math.max(8, Math.min(92, topPct));
+
+$card.css({ left: leftPct + '%', top: topPct + '%' })
+     .attr('data-left', leftPct).attr('data-top', topPct);
+};
     
       const onEnd = (e) => {
         if (!isDown) return;
@@ -1564,7 +1572,11 @@ $card.off('dblclick').on('dblclick', function(e){
               if (App.tags && App.tags.getColorForTask) {
                 const color = App.tags.getColorForTask(json.item.id);
                 if (color && $c.length) {
-                    $c.css('background', `linear-gradient(180deg, ${color}, #222)`);
+                    // ★修正：白文字が読めるようにベースの色を強制的に暗く（-80）する
+                    const baseColor = App.utils && App.utils.shade ? App.utils.shade(color, -80) : color;
+                    const darkColor = App.utils && App.utils.shade ? App.utils.shade(color, -120) : '#222';
+                    $c.css('background', `linear-gradient(180deg, ${baseColor}, ${darkColor})`)
+                      .css('border-color', 'rgba(255,255,255,.10)');
                 }
               }
   
@@ -1601,15 +1613,17 @@ $card.off('dblclick').on('dblclick', function(e){
                 if (App.tags && App.tags.loadAll) await App.tags.loadAll();
   
                 if (App.tags && App.tags.getColorForTask) {
-                    const color = App.tags.getColorForTask(id);
-                    if (color) {
-                        const dark = App.utils && App.utils.shade ? App.utils.shade(color, -40) : '#222';
-                        $card.css('background', `linear-gradient(180deg, ${color}, ${dark})`)
-                             .css('border-color', 'rgba(255,255,255,.10)');
-                    } else {
-                        $card.css({ background:'', borderColor:'' });
-                    }
-                }
+                  const color = App.tags.getColorForTask(id);
+                  if (color) {
+                      // ★修正：白文字が読めるようにベースの色を強制的に暗く（-80）する
+                      const baseColor = App.utils && App.utils.shade ? App.utils.shade(color, -80) : color;
+                      const darkColor = App.utils && App.utils.shade ? App.utils.shade(color, -120) : '#222';
+                      $card.css('background', `linear-gradient(180deg, ${baseColor}, ${darkColor})`)
+                           .css('border-color', 'rgba(255,255,255,.10)');
+                  } else {
+                      $card.css({ background:'', borderColor:'' });
+                  }
+              }
         
                 if (App.tags && App.tags.renderFilters) App.tags.renderFilters();
                 if (App.calendar && App.calendar.isActive()) App.calendar.render();

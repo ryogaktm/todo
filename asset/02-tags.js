@@ -43,22 +43,48 @@
 
 
 // タグの色を取得（タスクカードの色付けに使用）
-        // 一番上に表示されているタググループのタグを最優先して色にする
-        getColorForTask(taskId){
-            const tids = this.getTagsForTask(taskId);
-            if(!tids || tids.length === 0) return null;
+getColorForTask(taskId){
+    let tids = this.getTagsForTask(taskId);
+    // 読み込み直後などでデータが見つからない場合はDOMから安全に拾う
+    if (!tids || tids.length === 0) {
+        const $c = $(`.card[data-id="${taskId}"]`);
+        if ($c.length) {
+            tids = ($c.attr('data-tags') || '').split(',').map(Number).filter(n => n > 0);
+        }
+    }
+    if(!tids || tids.length === 0) return null;
 
-            // タグ管理画面で上から表示されているグループ順にチェック
-            for (let i = 0; i < TAG_TYPES.length; i++) {
-                const type = TAG_TYPES[i];
-                // このグループに属していて、かつタスクに付いているタグを探す
-                const matchTag = TAGS.find(t => t.type_id == type.id && tids.includes(Number(t.id)));
-                if (matchTag && matchTag.color) {
-                    return matchTag.color; // 見つかったらその色を採用
-                }
-            }
-            return null;
-        },
+    for (let i = 0; i < TAG_TYPES.length; i++) {
+        const type = TAG_TYPES[i];
+        const matchTag = TAGS.find(t => t.type_id == type.id && tids.includes(Number(t.id)));
+        if (matchTag && matchTag.color) {
+            return matchTag.color;
+        }
+    }
+    return null;
+},
+
+// タスクカード上にタグのバッジを描画する
+renderCardTags($card){
+    const $wrap = $card.find('.card-tags');
+    if (!$wrap.length) return;
+    $wrap.empty();
+    
+    const tagStr = $card.attr('data-tags') || '';
+    const tids = tagStr.split(',').map(Number).filter(n => n > 0);
+    if (tids.length === 0) return;
+    
+    // ★変更：常に「タグ管理画面のグループ順」に合わせてバッジを並び替える
+    const sortedTags = [];
+    TAG_TYPES.forEach(type => {
+        const groupTags = TAGS.filter(t => t.type_id == type.id && tids.includes(Number(t.id)));
+        groupTags.forEach(tag => sortedTags.push(tag));
+    });
+    
+    sortedTags.forEach(tag => {
+        $wrap.append(`<span class="card-tag-badge" style="border-left-color: ${tag.color};">${App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(tag.name) : tag.name}</span>`);
+    });
+},
 
         // タスクカード上にタグのバッジを描画する
         renderCardTags($card){
@@ -429,18 +455,23 @@ getSelectedTagIds(){
                             // 並び順が変わると「どの色が優先されるか」が変わるのでカードの色を更新する
                             if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList();
                             
-                            // ボード上の全カードの色を再計算
-                            $('.card').each(function(){
-                                const id = $(this).attr('data-id');
-                                const color = App.tags.getColorForTask(id);
-                                if (color) {
-                                    const dark = App.utils && App.utils.shade ? App.utils.shade(color, -40) : '#222';
-                                    $(this).css('background', `linear-gradient(180deg, ${color}, ${dark})`)
-                                           .css('border-color', 'rgba(255,255,255,.10)');
-                                } else {
-                                    $(this).css({ background:'', borderColor:'' });
-                                }
-                            });
+                      // ボード上の全カードの色とバッジ順を再計算
+                      $('.card').each(function(){
+                        const $c = $(this);
+                        const id = $c.attr('data-id');
+                        const color = App.tags.getColorForTask(id);
+                        if (color) {
+                            // ★修正：白文字が読めるようにベースの色を強制的に暗く（-80）する
+                            const baseColor = App.utils && App.utils.shade ? App.utils.shade(color, -80) : color;
+                            const darkColor = App.utils && App.utils.shade ? App.utils.shade(color, -120) : '#222';
+                            $c.css('background', `linear-gradient(180deg, ${baseColor}, ${darkColor})`)
+                              .css('border-color', 'rgba(255,255,255,.10)');
+                        } else {
+                            $c.css({ background:'', borderColor:'' });
+                        }
+                        // ★追加：バッジも新しい順番に合わせて再描画する
+                        App.tags.renderCardTags($c);
+                    });
                         });
                     }
                 });

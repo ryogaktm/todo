@@ -33,9 +33,9 @@ include_once(__DIR__ . '/asset/function.php');
             <?php else: ?>
                 <!-- 通常ページ -->
                 <div class="h-left-main">
-                    <div class="h-title">Quadrant TODO</div>
+                    <!-- <div class="h-title">Quadrant TODO</div> -->
                     <div class="h-est-today">
-                        今日の想定稼働：<span id="todayEstTotal">0</span>h
+                        ToDoリスト：今日の想定稼働：<span id="todayEstTotal">0</span>h
                     </div>
                 </div>
             <?php endif; ?>
@@ -112,9 +112,9 @@ include_once(__DIR__ . '/asset/function.php');
 
     <!-- ▲ ボールフィルタ帯 -->
 
-    <div id="tagFiltersContainer" class="tag-filter-container filter-bar" style="margin-bottom: 10px; padding: 0 16px;"></div>
-
-    <div class="category-bar" id="categoryBar" aria-label="カテゴリ一覧" hidden></div>
+    <div id="tagFiltersContainer" class="tag-filter-container filter-bar"></div>
+    <!-- 
+    <div class="category-bar" id="categoryBar" aria-label="カテゴリ一覧" hidden></div> -->
     <div class="wrap">
         <div class="board" id="board">
             <div class="line-h"></div>
