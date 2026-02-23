@@ -14,6 +14,21 @@ $CSV_PATH = ($PARENT_ID > 0)
     ? ($DATA_DIR . '/subtasks_' . $PARENT_ID . '.csv')
     : $CSV_PATH_MAIN;
 
+// ★追加：親タスク（メインタスク）の名前を取得する
+$PARENT_TITLE = '';
+if ($PARENT_ID > 0 && file_exists($CSV_PATH_MAIN)) {
+    if (($fp = fopen($CSV_PATH_MAIN, 'r')) !== false) {
+        fgetcsv($fp); // ヘッダを飛ばす
+        while (($data = fgetcsv($fp)) !== false) {
+            if ((int)$data[0] === $PARENT_ID) {
+                $PARENT_TITLE = $data[1]; // タイトルを取得
+                break;
+            }
+        }
+        fclose($fp);
+    }
+}
+
 // ★新システム用CSV
 $TAG_TYPES_CSV = $DATA_DIR . '/tag_types.csv'; // ID, Name (例: "案件", "優先度")
 $TAGS_CSV      = $DATA_DIR . '/tags.csv';      // ID, TypeID, Name, Color
