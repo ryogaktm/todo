@@ -165,8 +165,23 @@ $action = $_GET['action'] ?? null;
 
 if ($action) {
     // タスク一覧
+    // タスク一覧
     if ($action === 'list') {
         $rows = csv_read_all($CSV_PATH);
+
+        // ★追加: 読み込み時にタグの情報を合体させる
+        $task_tags = [];
+        if (($fp = fopen($TASK_TAGS_CSV, 'r')) !== false) {
+            fgetcsv($fp);
+            while ($r = fgetcsv($fp)) {
+                $task_tags[(int)$r[0]][] = (int)$r[1];
+            }
+            fclose($fp);
+        }
+        foreach ($rows as &$r) {
+            $r['tag_ids'] = $task_tags[$r['id']] ?? [];
+        }
+
         json_out(['ok' => true, 'items' => $rows]);
     }
 
@@ -219,7 +234,8 @@ if ($action) {
         if ($found) csv_write_all($CSV_PATH, $rows);
 
         // ★タグ更新（全削除して書き直し）
-        if (isset($_POST['tag_ids'])) {
+        // タイトルが送られている場合（＝モーダルからの保存時）のみタグも更新する
+        if (isset($_POST['title'])) {
             $all = [];
             if (($fp = fopen($TASK_TAGS_CSV, 'r')) !== false) {
                 fgetcsv($fp);
@@ -228,7 +244,7 @@ if ($action) {
                 }
                 fclose($fp);
             }
-            $newTags = is_array($_POST['tag_ids']) ? $_POST['tag_ids'] : [];
+            $newTags = (isset($_POST['tag_ids']) && is_array($_POST['tag_ids'])) ? $_POST['tag_ids'] : [];
             foreach ($newTags as $tid) $all[] = [$id, (int)$tid];
 
             $fp = fopen($TASK_TAGS_CSV, 'w');

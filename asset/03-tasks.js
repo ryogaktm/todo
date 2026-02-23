@@ -572,9 +572,12 @@ function applyBallFilterAndRenderList(){
     none:0
   };
 
-  // カテゴリ側カウント
-  const catCounts = {};
-  const tagCounts = {};
+// カテゴリ側カウント
+const catCounts = {};
+const tagCounts = {};
+let totalForTags = 0; // ★追加: タグの「すべて」用のカウント
+
+// 日付差分ヘルパ
 
   // 日付差分ヘルパ
   const today   = App.utils.today();
@@ -629,14 +632,17 @@ function applyBallFilterAndRenderList(){
   // D. テキスト検索一致？
   const fitsText = matchTextFilter($c);
 
-  //  タグフィルタ一致？
-  let fitsTag = true;
-  const activeIds = [];
-  $('.tag-filter-btn.active').each(function(){ activeIds.push(Number($(this).data('id'))); });
-  if (activeIds.length > 0) {
-      const myTags = ($c.attr('data-tags') || '').split(',').map(Number);
-      fitsTag = activeIds.every(id => myTags.includes(id));
-  }
+//  タグフィルタ一致？
+let fitsTag = true;
+const activeIds = [];
+$('.tag-filter-btn.active').each(function(){ 
+    const id = Number($(this).data('id'));
+    if (id) activeIds.push(id); 
+});
+if (activeIds.length > 0) {
+    const myTags = ($c.attr('data-tags') || '').split(',').map(Number);
+    fitsTag = activeIds.every(id => myTags.includes(id));
+}
 
   // E. このカードをハイライト対象にする？（fitsTagを追加）
   const highlight = (fitsSide && fitsDue && fitsCat && fitsText && fitsTag);
@@ -697,13 +703,15 @@ function applyBallFilterAndRenderList(){
     catCounts[key]++;
   }
 
-  // ★追加: 4) タグ側カウント
-  if (fitsSide && fitsDue && fitsCat && fitsText){
-    const myTags = ($c.attr('data-tags') || '').split(',').map(Number).filter(n => n > 0);
-    myTags.forEach(tid => {
-        tagCounts[tid] = (tagCounts[tid] || 0) + 1;
-    });
-  }
+// ★追加: 4) タグ側カウント
+if (fitsSide && fitsDue && fitsCat && fitsText){
+  totalForTags++; // ★ここを追加: タグ以外の条件を満たす全件数を数える
+  const myTags = ($c.attr('data-tags') || '').split(',').map(Number).filter(n => n > 0);
+  myTags.forEach(tid => {
+      tagCounts[tid] = (tagCounts[tid] || 0) + 1;
+  });
+}
+
 }); // each card
 
   // ==== 右パネル再描画 ====
@@ -754,13 +762,19 @@ $('#categoryBar .category-chip').each(function(){
   $chip.find('.count').text(`（${n}）`);
 });
 
+
 // ★追加: ==== タグ帯の数字更新 ====
 $('.tag-filter-btn').each(function(){
-    const $btn = $(this);
-    const tid = Number($btn.data('id'));
-    const tagName = $btn.data('name') || '';
-    const count = tagCounts[tid] || 0;
-    $btn.text(`${tagName} (${count})`);
+  const $btn = $(this);
+  const tid = Number($btn.data('id'));
+  if (!tid) {
+      // ★変更: 「すべて」ボタンの場合は総数を表示する
+      $btn.text(`すべて (${totalForTags})`);
+      return; 
+  }
+  const tagName = $btn.data('name') || '';
+  const count = tagCounts[tid] || 0;
+  $btn.text(`${tagName} (${count})`);
 });
 }
 
@@ -1125,16 +1139,15 @@ App.tasks.renderCardTitle = renderCardTitle;
       updateCardScale(); 
     }
 
-  // カードDOM -> openModalに渡せるオブジェクトへ
-  function itemFromCard($card){
-    const tagStr = $card.attr('data-tags') || '';
-    const tagIds = tagStr ? tagStr.split(',').map(Number) : [];
-    return {
-      id: parseInt($card.attr('data-id'), 10),
-      title: $card.data('raw_title') || $card.find('.title .t').text(),
-      body: $card.data('body') || '',
-      tag_ids:      (App.tags && App.tags.getSelectedTagIds) ? App.tags.getSelectedTagIds() : [],
-        start_date:    $card.attr('data-start')    || '',        
+    function itemFromCard($card){
+      const tagStr = $card.attr('data-tags') || '';
+      const tagIds = tagStr ? tagStr.split(',').map(Number) : [];
+      return {
+        id: parseInt($card.attr('data-id'), 10),
+        title: $card.data('raw_title') || $card.find('.title .t').text(),
+        body: $card.data('body') || '',
+        tag_ids: tagIds, // ★修正: カード自身が持っているタグ情報を渡す
+          start_date:    $card.attr('data-start')    || '',     
         testup_date:   $card.attr('data-testup')   || '',
         proof_date:    $card.attr('data-proof')    || '',
         delivery_date: $card.attr('data-delivery') || '',
@@ -1748,6 +1761,8 @@ function enterSearchOverride(){
       .addClass('is-active')
       .attr('aria-pressed','true');
 
+// --- カテゴリ側
+  // data-id="0" が「すべて」想定
   $('#categoryBar .category-chip')
     .removeClass('active')
     .attr('aria-pressed','false')
@@ -1755,7 +1770,13 @@ function enterSearchOverride(){
       .addClass('active')
       .attr('aria-pressed','true');
 
-  App.categories?.applyFilter?.();
+  // --- タグ側（各グループの「すべて」をアクティブに戻す）
+  $('.tag-filter-group').each(function(){
+      $(this).find('.tag-filter-btn').removeClass('active');
+      $(this).find('.tag-filter-btn').first().addClass('active'); 
+  });
+
+  applyBallFilterAndRenderList();
 }
 
 function exitSearchOverride(){

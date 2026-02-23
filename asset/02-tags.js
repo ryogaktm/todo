@@ -60,36 +60,58 @@
             return null;
         },
 
-        // 画面上部フィルタ描画
-        renderFilters(){
-            $filterContainer.empty();
-            
-            TAG_TYPES.forEach(type => {
-                const groupTags = TAGS.filter(t => t.type_id == type.id);
-                if(groupTags.length === 0) return;
+// 画面上部フィルタ描画
+renderFilters(){
+    // 再描画時に選択状態を維持するため、現在の active なタグIDを記憶
+    const activeIds = [];
+    $filterContainer.find('.tag-filter-btn.active').each(function(){
+        const id = Number($(this).data('id'));
+        if (id) activeIds.push(id);
+    });
 
-            // 変更前: const $group = $(`<div style="display:flex; ..."></div>`);
-            const $group = $(`<div class="tag-filter-group"></div>`);
-                
-            // 変更前: $group.append(`<span style="color:#bbb; ...">${type.name}</span>`);
-            $group.append(`<span class="tag-filter-label">${type.name}</span>`);
+    $filterContainer.empty();
+    
+    TAG_TYPES.forEach(type => {
+        const groupTags = TAGS.filter(t => t.type_id == type.id);
+        if(groupTags.length === 0) return;
+
+        const $group = $(`<div class="tag-filter-group"></div>`);
+        $group.append(`<span class="tag-filter-label">${type.name}</span>`);
+        
+        // グループ内で1つでも選択されているタグがあるか？
+        const isAnyActive = groupTags.some(tag => activeIds.includes(Number(tag.id)));
+
+     // 「すべて」ボタンの作成
+     const $allBtn = $(`<button class="tag-filter-btn ${!isAnyActive ? 'active' : ''}" data-id="0" style="border-left-color: transparent;">すべて (0)</button>`);
+        $allBtn.on('click', function(){
+            if ($(this).hasClass('active')) return; // 選択中は解除しない
+            $group.find('.tag-filter-btn').removeClass('active');
+            $(this).addClass('active');
+            if (App.tasks && App.tasks.applyBallFilterAndRenderList) {
+                App.tasks.applyBallFilterAndRenderList();
+            }
+        });
+        $group.append($allBtn);
+
+        // タグボタンの作成
+        groupTags.forEach(tag => {
+            const isActive = activeIds.includes(Number(tag.id));
+            const $btn = $(`<button class="tag-filter-btn ${isActive ? 'active' : ''}" data-id="${tag.id}" data-name="${tag.name}" style="border-left-color: ${tag.color};">${tag.name} (0)</button>`);
             
-            groupTags.forEach(tag => {
-                // ★ボタンに data-name を追加し、初期表示を (0) にする
-                const $btn = $(`<button class="tag-filter-btn" data-id="${tag.id}" data-name="${tag.name}" style="border-left-color: ${tag.color};">${tag.name} (0)</button>`);
-                
-                $btn.on('click', function(){
-                    $(this).toggleClass('active');
-                    // ★独自処理を消し、メインの絞り込み処理に合流させる
-                    if (App.tasks && App.tasks.applyBallFilterAndRenderList) {
-                        App.tasks.applyBallFilterAndRenderList();
-                    }
-                });
-                $group.append($btn);
+            $btn.on('click', function(){
+                if ($(this).hasClass('active')) return; // 選択中は解除しない
+                $group.find('.tag-filter-btn').removeClass('active'); // グループ内の他を解除
+                $(this).addClass('active'); // 自分を選択
+                if (App.tasks && App.tasks.applyBallFilterAndRenderList) {
+                    App.tasks.applyBallFilterAndRenderList();
+                }
             });
-                $filterContainer.append($group);
-            });
-        },
+            $group.append($btn);
+        });
+        
+        $filterContainer.append($group);
+    });
+},
 
      
 // タスク編集モーダル内の描画（クリックでパカッと開く方式）
