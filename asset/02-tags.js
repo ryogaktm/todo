@@ -41,13 +41,21 @@
             return TASK_TAG_MAP[taskId] || [];
         },
 
-        // タグの色を取得（タスクカードの色付けに使用）
-        // 最初のタグの色を返す、などのルール
+
+// タグの色を取得（タスクカードの色付けに使用）
+        // 一番上に表示されているタググループのタグを最優先して色にする
         getColorForTask(taskId){
             const tids = this.getTagsForTask(taskId);
-            if(tids.length > 0) {
-                const tag = TAGS.find(t => t.id == tids[0]);
-                if(tag && tag.color) return tag.color;
+            if(!tids || tids.length === 0) return null;
+
+            // タグ管理画面で上から表示されているグループ順にチェック
+            for (let i = 0; i < TAG_TYPES.length; i++) {
+                const type = TAG_TYPES[i];
+                // このグループに属していて、かつタスクに付いているタグを探す
+                const matchTag = TAGS.find(t => t.type_id == type.id && tids.includes(Number(t.id)));
+                if (matchTag && matchTag.color) {
+                    return matchTag.color; // 見つかったらその色を採用
+                }
             }
             return null;
         },
