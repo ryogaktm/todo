@@ -28,7 +28,7 @@ include_once(__DIR__ . '/asset/function.php');
                 <!-- サブページの時：戻る + 親タスク名 -->
                 <button class="btn" onclick="location.href='./'">← 戻る</button>
                 <span style="margin-left:10px; font-weight:700">
-                    <?= htmlspecialchars($PARENT_TITLE ?: ('Task #' . $PARENT_ID), ENT_QUOTES, 'UTF-8') ?>
+                    <?= htmlspecialchars(!empty($PARENT_TITLE) ? $PARENT_TITLE : ('Task #' . $PARENT_ID), ENT_QUOTES, 'UTF-8') ?>
                 </span>
             <?php else: ?>
                 <!-- 通常ページ -->

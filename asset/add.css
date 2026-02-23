@@ -1045,3 +1045,91 @@ ease-in-out infinite;
 .tag-filter-container{
   margin-top: 5px;
 }
+
+/* =========================================
+   タスク編集モーダル内のタグスッキリ表示 (v2: 常時表示・半透明方式)
+   ========================================= */
+   .tag-display-row-v2 {
+    display: flex;
+    align-items: flex-start; /* 複数行になった時に上揃えにするため */
+    margin-bottom: 8px;
+    border-bottom: 1px solid #444;
+    padding-bottom: 8px;
+    min-height: 28px;
+}
+
+.tag-row-tags-list {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    max-height: 1000px; /* 開いた時の最大高さ（余裕をもたせる） */
+    overflow: hidden;
+    transition: max-height 0.25s ease;
+}
+
+/* 1行だけ表示するモード（高さを制限して隠す） */
+.tag-row-tags-list.is-collapsed {
+    max-height: 26px; 
+}
+
+/* タグ選択ボタン（デフォルトは半透明） */
+.tag-select-lbl {
+    display: inline-flex;
+    align-items: center;
+    background: #333;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #fff;
+    cursor: pointer;
+    opacity: 0.35; /* ★ 未選択は半透明に */
+    transition: opacity 0.15s, background 0.15s;
+    user-select: none;
+    height: 26px;
+    box-sizing: border-box;
+}
+
+.tag-select-lbl:hover {
+    opacity: 0.8;
+}
+
+/* ★ 選択中のみ不透明(1) になり、少し背景も明るくなる */
+.tag-select-lbl.is-selected {
+    opacity: 1;
+    background: #555; 
+}
+
+.tag-add-btn {
+    font-size: 10px;
+    background: #555;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 0 8px;
+    border-radius: 4px;
+    height: 26px;
+}
+.tag-add-btn:hover {
+    background: #777;
+}
+
+/* 右端の展開ボタン(▼) */
+.tag-expand-wrap {
+    margin-left: 8px;
+    padding-top: 2px;
+}
+.tag-expand-btn {
+    background: #444;
+    border: none;
+    color: #ccc;
+    cursor: pointer;
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+.tag-expand-btn:hover {
+    background: #666;
+    color: #fff;
+}

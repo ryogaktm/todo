@@ -158,7 +158,7 @@ renderCardTags($card){
 },
 
      
-// タスク編集モーダル内の描画（クリックでパカッと開く方式）
+// タスク編集モーダル内の描画（常に表示・半透明方式）
 renderSelect(currentTagIds = []){
     $selectContainer.empty();
     if(TAG_TYPES.length === 0) {
@@ -170,77 +170,57 @@ renderSelect(currentTagIds = []){
         const groupTags = TAGS.filter(t => t.type_id == type.id);
         const isMultiMode = (type.order == 1); 
 
-        // 選択されているタグを抽出
-        const selectedTags = groupTags.filter(tag => currentTagIds.includes(Number(tag.id)));
+        const modeLabelClass = isMultiMode ? 'mode-multi' : 'mode-single';
+        const modeLabelText  = isMultiMode ? '(複数選択可)' : '(単一選択)';
         
-   
-// --- スッキリ表示（行全体をクリック可能にする） ---
-                // クラス名だけを付与。イベント用に trigger-row-ID も付与。
-                const $row = $(`<div class="tag-display-row trigger-row-${type.id}"></div>`);
-                
-                const modeLabelClass = isMultiMode ? 'mode-multi' : 'mode-single';
-                const modeLabelText  = isMultiMode ? '(複数選択可)' : '(単一選択)';
-                
-                const $titleWrap = $(`
-                    <div class="tag-row-title-wrap">
-                        <span class="tag-row-title">${type.name}</span>
-                        <span class="tag-row-mode ${modeLabelClass}">${modeLabelText}</span>
-                    </div>
-                `);
+        // 新しい行（v2）
+        const $row = $(`<div class="tag-display-row-v2" data-type-id="${type.id}"></div>`);
+        
+        const $titleWrap = $(`
+            <div class="tag-row-title-wrap">
+                <span class="tag-row-title">${type.name}</span>
+                <span class="tag-row-mode ${modeLabelClass}">${modeLabelText}</span>
+            </div>
+        `);
 
-                const $tagsWrap = $(`<div class="tag-row-tags-wrap"></div>`);
+      
+     // ★全行表示するコンテナ（初期状態で開いておく）
+     const $tagsWrap = $(`<div class="tag-row-tags-list"></div>`);
 
-                if (selectedTags.length === 0) {
-                    $tagsWrap.append(`<span class="tag-empty-text">（未選択）</span>`);
-                } else {
-                    selectedTags.forEach(tag => {
-                        // 色だけは動的データなのでJSで指定
-                        $tagsWrap.append(`<span class="tag-selected-badge" style="border-left-color: ${tag.color};">${tag.name}</span>`);
-                    });
-                }
-
-                const $iconWrap = $(`<div class="tag-row-icon">▼</div>`);
-                
-                $row.append($titleWrap);
-                $row.append($tagsWrap);
-                $row.append($iconWrap);
-
-        // --- 隠しポップアップ（選択肢一覧） ---
-        const $popup = $(`<div style="display:none; width:100%; background:#222; border:1px solid #555; border-radius:4px; padding:10px; margin-bottom:12px; box-shadow:0 4px 12px rgba(0,0,0,0.5);"></div>`);
-        const $popupInner = $(`<div style="display:flex; flex-wrap:wrap; gap:8px;"></div>`);
-
-        // 「なし」クリアボタン（単一選択時）
+        // 「なし」ボタン（単一選択時のみ）
         if (!isMultiMode) {
+            const hasSelected = currentTagIds.some(id => groupTags.find(t => t.id == id));
+            const isNoneSelected = !hasSelected;
+            
             const $clearLabel = $(`
-                <label style="display:flex; align-items:center; background:#444; color:#ccc; padding:2px 6px; border-radius:4px; font-size:12px; cursor:pointer;">
-                    <input type="radio" name="tags_${type.id}" value="" style="margin-right:4px;">
+                <label class="tag-select-lbl ${isNoneSelected ? 'is-selected' : ''}" style="border-left: 3px solid transparent;">
+                    <input type="radio" name="tags_${type.id}" value="" ${isNoneSelected ? 'checked' : ''} style="margin-right:4px;">
                     (なし)
                 </label>
             `);
-            $popupInner.append($clearLabel);
+            $tagsWrap.append($clearLabel);
         }
 
-        // 選択肢の生成
+        // タグの生成
         groupTags.forEach(tag => {
             const isChecked = currentTagIds.includes(Number(tag.id));
             const inputType = isMultiMode ? 'checkbox' : 'radio';
             const inputName = isMultiMode ? 'tags[]' : `tags_${type.id}`;
 
             const $label = $(`
-                <label style="display:flex; align-items:center; background:#333; padding:2px 6px; border-radius:4px; font-size:12px; cursor:pointer; border-left:3px solid ${tag.color};">
+                <label class="tag-select-lbl ${isChecked ? 'is-selected' : ''}" style="border-left: 3px solid ${tag.color};">
                     <input type="${inputType}" name="${inputName}" value="${tag.id}" ${isChecked ? 'checked' : ''} style="margin-right:4px;">
                     ${tag.name}
                 </label>
             `);
-            $popupInner.append($label);
+            $tagsWrap.append($label);
         });
 
         // その場で追加ボタン
-        const $addBtn = $(`<button type="button" style="font-size:10px; background:#666; border:none; color:#fff; cursor:pointer; padding:2px 6px; border-radius:4px;">+追加</button>`);
+        const $addBtn = $(`<button type="button" class="tag-add-btn">+追加</button>`);
         $addBtn.on('click', ()=>{
             const newName = prompt(`${type.name} に新しいタグを追加:`);
             if(newName){
-                // 追加時に現在の選択状態を保存して、再描画時に引き継ぐ
                 const currentIds = App.tags.getSelectedTagIds();
                 App.api.post('?action=tag_create', { type_id: type.id, name: newName, color: getRandomColor() })
                 .done(async ()=>{ 
@@ -249,36 +229,53 @@ renderSelect(currentTagIds = []){
                     if (newTag) currentIds.push(Number(newTag.id));
                     App.tags.renderSelect(currentIds); 
                     App.tags.renderFilters(); 
-                    if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList(); // ★追加
-                    // 再描画直後にポップアップを開き直す（行を強制クリック）
-                    $selectContainer.find(`.trigger-row-${type.id}`).click();
+                    if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList(); 
+                    
+                    // 追加後は全て見えるように展開しておく
+                    const $targetWrap = $selectContainer.find(`.tag-display-row-v2[data-type-id="${type.id}"] .tag-row-tags-list`);
+                    $targetWrap.removeClass('is-collapsed');
+                    $targetWrap.next('.tag-expand-wrap').find('button').text('▲');
                 });
             }
         });
-        $popupInner.append($addBtn);
+        $tagsWrap.append($addBtn);
 
-        // 閉じるボタン
-        const $closeBtnWrap = $(`<div style="text-align:right; margin-top:8px;"><button type="button" style="background:#007bff; border:none; color:#fff; padding:4px 12px; border-radius:4px; cursor:pointer; font-size:11px;">閉じる</button></div>`);
-        
-        $popup.append($popupInner);
-        $popup.append($closeBtnWrap);
+       // 展開（閉じる）ボタン（▲）
+       const $expandWrap = $(`<div class="tag-expand-wrap"><button type="button" class="tag-expand-btn">▲</button></div>`);
 
+        $row.append($titleWrap);
+        $row.append($tagsWrap);
+        $row.append($expandWrap);
         $selectContainer.append($row);
-        $selectContainer.append($popup);
 
-        // イベント：行をクリックしたらポップアップを開く
-        $row.addClass(`trigger-row-${type.id}`).on('click', () => {
-            $row.hide();
-            $popup.slideDown(150);
+        // ★選択状態の切り替え連動（色をクッキリさせる処理）
+        $tagsWrap.find('input').on('change', function() {
+            if (!isMultiMode) {
+                $tagsWrap.find('.tag-select-lbl').removeClass('is-selected');
+            }
+            if ($(this).is(':checked')) {
+                $(this).closest('.tag-select-lbl').addClass('is-selected');
+            } else {
+                $(this).closest('.tag-select-lbl').removeClass('is-selected');
+            }
         });
 
-        // イベント：閉じるボタンでポップアップを閉じ、表示を更新
-        $closeBtnWrap.find('button').on('click', () => {
-            $popup.slideUp(150, () => {
-                // 閉じた瞬間に現在の選択状態を取得して再描画
-                const currentIds = App.tags.getSelectedTagIds();
-                App.tags.renderSelect(currentIds);
-            });
+        // ★DOM描画後に「1行に収まっているか？」を判定して、収まっていれば展開ボタンを消す
+        setTimeout(() => {
+            if ($tagsWrap[0].scrollHeight <= 32) {
+                $expandWrap.css('visibility', 'hidden'); 
+            }
+        }, 0);
+
+        // 展開イベント
+        $expandWrap.find('.tag-expand-btn').on('click', function() {
+            if ($tagsWrap.hasClass('is-collapsed')) {
+                $tagsWrap.removeClass('is-collapsed');
+                $(this).text('▲');
+            } else {
+                $tagsWrap.addClass('is-collapsed');
+                $(this).text('▼');
+            }
         });
     });
 },
