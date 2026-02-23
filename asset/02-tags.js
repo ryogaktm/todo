@@ -314,19 +314,52 @@ getSelectedTagIds(){
 
 
             // ▼ 追加: グループの編集
-            $manageList.on('click', '.btn-edit-type', function(){
-                const id = $(this).data('id');
-                const oldName = $(this).data('name');
-                const newName = prompt('グループ名を変更:', oldName);
-                if(newName && newName.trim() !== '' && newName !== oldName){
-                    App.api.post('?action=tagtype_update', { id: id, name: newName.trim() }).done(async ()=>{
-                        await App.tags.loadAll();
-                        App.tags.renderManageList();
-                        App.tags.renderFilters();
-                        if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList();
-                    });
-                }
-            });
+// ▼ 修正: グループの編集（名前の変更のみ・安全）
+$manageList.on('click', '.btn-edit-type', function(){
+    const id = $(this).data('id');
+    const oldName = $(this).data('name');
+    
+    const newName = prompt('グループ名を変更:', oldName);
+    if(newName === null) return; // キャンセルした場合は何もしない
+    const finalName = newName.trim() === '' ? oldName : newName.trim();
+
+    if (finalName !== oldName) {
+        // 名前だけを更新（複数/単一のフラグは触らない）
+        App.api.post('?action=tagtype_update', { id: id, name: finalName }).done(async ()=>{
+            await App.tags.loadAll();
+            App.tags.renderManageList();
+            App.tags.renderFilters();
+            if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList();
+        });
+    }
+});
+
+// ▼ 追加: 複数選択のトグル切り替え（ここで切り替えとクレンジングを行う）
+$manageList.on('change', '.cb-multi-toggle', function(){
+    const id = $(this).data('id');
+    const name = $(this).data('name');
+    const isMulti = $(this).is(':checked') ? 1 : 0;
+    const $cb = $(this);
+
+    // 複数選択 -> 単一選択 に変更する時だけ警告を出す
+    if (isMulti === 0) {
+        if (!confirm('単一選択に変更すると、現在このグループで複数選択されているタスクのタグが「1つだけ」残して消去されます。\n本当によろしいですか？')) {
+            $cb.prop('checked', true); // キャンセル時はチェックを元に戻す
+            return;
+        }
+    }
+
+    App.api.post('?action=tagtype_update', { id: id, name: name, is_multi: isMulti }).done(async ()=>{
+        // タスクカードのタグ状態を完全に反映させるため再読み込み
+        if (App.tasks && App.tasks.loadAll) {
+            await App.tasks.loadAll(); 
+        } else {
+            await App.tags.loadAll();
+            App.tags.renderFilters();
+        }
+        App.tags.renderManageList();
+    });
+});
 
             // ▼ 追加: グループの削除
             $manageList.on('click', '.btn-del-type', function(){
@@ -387,7 +420,11 @@ getSelectedTagIds(){
                                 <span class="drag-handle-type" style="cursor:grab; color:#999; font-size:16px;" title="ドラッグで並び替え">☰</span>
                                 <span style="font-size:14px; font-weight:bold; color:#333;">${App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(type.name) : type.name}${multiBadge}</span>
                             </div>
-                            <div>
+<div style="display:flex; align-items:center;">
+                                <label style="font-size:11px; color:#555; margin-right:12px; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                                    <input type="checkbox" class="cb-multi-toggle" data-id="${type.id}" data-name="${type.name}" ${type.order == 1 ? 'checked' : ''} style="margin:0;">
+                                    複数選択可
+                                </label>
                                 <button class="btn btn-sm btn-edit-type" data-id="${type.id}" data-name="${type.name}" style="padding:2px 8px; margin-right:4px;">編集</button>
                                 <button class="btn btn-sm btn-del-type" data-id="${type.id}" style="padding:2px 8px; background:#e53935; color:#fff; border:none;">削除</button>
                             </div>
