@@ -1080,6 +1080,7 @@ App.tasks.renderCardTitle = renderCardTitle;
       const $el = $(`
         <div class="card" data-id="${item.id}" data-left="${item.left_pct}" data-top="${item.top_pct}" data-tags="${tagIdsStr}">
           <div class="title-top"><span class="eta"></span></div>
+          <div class="card-tags"></div>
           <h4 class="title"><span class="t"></span><span class="cnt" style="display:none;"></span></h4>
           <div class="title-btm"><span class="state-pill"></span><span class="ball-pill" style="margin-left:8px; opacity:.85;"></span></div>
           <button class="note-btn" title="詳細を開く">📝</button>
@@ -1132,6 +1133,8 @@ App.tasks.renderCardTitle = renderCardTitle;
       makeDraggable($el);
       updateCardBadges($el);
       updateStageClasses($el); 
+
+      if (App.tags && App.tags.renderCardTags) App.tags.renderCardTags($el);
 
       if (App.tags && App.tags.renderFilters) App.tags.renderFilters();
       applyBallFilterAndRenderList();
@@ -1565,6 +1568,7 @@ $card.off('dblclick').on('dblclick', function(e){
                 }
               }
   
+              if (App.tags && App.tags.renderCardTags) App.tags.renderCardTags($card);
               if (App.tags && App.tags.renderFilters) App.tags.renderFilters();
               if (App.calendar && App.calendar.isActive()) App.calendar.render();
     

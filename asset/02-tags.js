@@ -60,8 +60,26 @@
             return null;
         },
 
-// 画面上部フィルタ描画
-renderFilters(){
+        // タスクカード上にタグのバッジを描画する
+        renderCardTags($card){
+            const $wrap = $card.find('.card-tags');
+            if (!$wrap.length) return;
+            $wrap.empty();
+            
+            const tagStr = $card.attr('data-tags') || '';
+            const tids = tagStr.split(',').map(Number).filter(n => n > 0);
+            if (tids.length === 0) return;
+            
+            tids.forEach(tid => {
+                const tag = TAGS.find(t => t.id == tid);
+                if (tag) {
+                    $wrap.append(`<span class="card-tag-badge" style="border-left-color: ${tag.color};">${App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(tag.name) : tag.name}</span>`);
+                }
+            });
+        },
+
+        // 画面上部フィルタ描画
+        renderFilters(){
     // 再描画時に選択状態を維持するため、現在の active なタグIDを記憶
     const activeIds = [];
     $filterContainer.find('.tag-filter-btn.active').each(function(){

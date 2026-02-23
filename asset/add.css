@@ -1014,3 +1014,24 @@ ease-in-out infinite;
     font-size: 10px;
     margin-left: auto;
 }
+
+/* =========================================
+   タスクカード上のタグバッジ
+   ========================================= */
+   .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+.card-tag-badge {
+    font-size: 10px;
+    background: rgba(0, 0, 0, 0.4); /* 背景は少し暗くして文字を目立たせる */
+    color: #eee;
+    padding: 2px 6px;
+    border-radius: 8px;
+    border-left: 3px solid transparent; /* 色はJSで指定 */
+    line-height: 1.2;
+    white-space: nowrap;
+}
