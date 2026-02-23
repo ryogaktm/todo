@@ -377,7 +377,7 @@ include_once(__DIR__ . '/asset/function.php');
     <div class="toast" id="toast"></div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 
     <script src="asset/01-core.js"></script>
     <script src="asset/02-tags.js"></script>

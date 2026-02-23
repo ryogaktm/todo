@@ -278,7 +278,6 @@ if ($action) {
             while ($r = fgetcsv($fp)) $rows[] = ['id' => $r[0], 'name' => $r[1], 'color' => $r[2], 'order' => $r[3]];
             fclose($fp);
         }
-        usort($rows, fn($a, $b) => $a['order'] <=> $b['order']);
         json_out(['ok' => true, 'items' => $rows]);
     }
 
@@ -448,6 +447,70 @@ if ($action) {
         $fp = fopen($TAGS_CSV, 'w');
         fputcsv($fp, ['id', 'type_id', 'name', 'color', 'created_at', 'updated_at']);
         foreach ($rows as $r) fputcsv($fp, $r);
+        fclose($fp);
+        json_out(['ok' => true]);
+    }
+
+    // --- 追加: タグタイプの並び替え ---
+    if ($action === 'tagtype_reorder') {
+        $ids = $_POST['ids'] ?? [];
+        if (!is_array($ids) || empty($ids)) json_out(['ok' => false]);
+
+        $rows = [];
+        if (($fp = fopen($TAG_TYPES_CSV, 'r')) !== false) {
+            $header = fgetcsv($fp);
+            while ($r = fgetcsv($fp)) $rows[] = $r;
+            fclose($fp);
+        }
+
+        $rowMap = [];
+        foreach ($rows as $r) $rowMap[(int)$r[0]] = $r;
+
+        $newRows = [];
+        foreach ($ids as $id) {
+            $id = (int)$id;
+            if (isset($rowMap[$id])) {
+                $newRows[] = $rowMap[$id];
+                unset($rowMap[$id]);
+            }
+        }
+        foreach ($rowMap as $r) $newRows[] = $r;
+
+        $fp = fopen($TAG_TYPES_CSV, 'w');
+        fputcsv($fp, ['id', 'name', 'color', 'order', 'created_at', 'updated_at']); // 4列目はis_multi
+        foreach ($newRows as $r) fputcsv($fp, $r);
+        fclose($fp);
+        json_out(['ok' => true]);
+    }
+
+    // --- 追加: タグの並び替え ---
+    if ($action === 'tag_reorder') {
+        $ids = $_POST['ids'] ?? [];
+        if (!is_array($ids) || empty($ids)) json_out(['ok' => false]);
+
+        $rows = [];
+        if (($fp = fopen($TAGS_CSV, 'r')) !== false) {
+            $header = fgetcsv($fp);
+            while ($r = fgetcsv($fp)) $rows[] = $r;
+            fclose($fp);
+        }
+
+        $rowMap = [];
+        foreach ($rows as $r) $rowMap[(int)$r[0]] = $r;
+
+        $newRows = [];
+        foreach ($ids as $id) {
+            $id = (int)$id;
+            if (isset($rowMap[$id])) {
+                $newRows[] = $rowMap[$id];
+                unset($rowMap[$id]);
+            }
+        }
+        foreach ($rowMap as $r) $newRows[] = $r;
+
+        $fp = fopen($TAGS_CSV, 'w');
+        fputcsv($fp, ['id', 'type_id', 'name', 'color', 'created_at', 'updated_at']);
+        foreach ($newRows as $r) fputcsv($fp, $r);
         fclose($fp);
         json_out(['ok' => true]);
     }

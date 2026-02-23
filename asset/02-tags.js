@@ -336,11 +336,14 @@ getSelectedTagIds(){
                     ? '<span style="font-size:10px; background:#4CAF50; color:#fff; padding:2px 6px; border-radius:10px; margin-left:8px; vertical-align:middle;">複数選択可</span>' 
                     : '<span style="font-size:10px; background:#888; color:#fff; padding:2px 6px; border-radius:10px; margin-left:8px; vertical-align:middle;">単一選択</span>';
                 
-                // グループ名の行（右側に編集・削除ボタン）
+                // ★修正: data-id を付与し、ドラッグ用のハンドル (☰) を追加
                 const $div = $(`
-                    <div style="padding:10px; border-bottom:1px solid #ddd; background:#f9f9f9; margin-bottom:8px;">
+                    <div data-id="${type.id}" style="padding:10px; border-bottom:1px solid #ddd; background:#f9f9f9; margin-bottom:8px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                            <span style="font-size:14px; font-weight:bold; color:#333;">${App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(type.name) : type.name}${multiBadge}</span>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span class="drag-handle-type" style="cursor:grab; color:#999; font-size:16px;" title="ドラッグで並び替え">☰</span>
+                                <span style="font-size:14px; font-weight:bold; color:#333;">${App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(type.name) : type.name}${multiBadge}</span>
+                            </div>
                             <div>
                                 <button class="btn btn-sm btn-edit-type" data-id="${type.id}" data-name="${type.name}" style="padding:2px 8px; margin-right:4px;">編集</button>
                                 <button class="btn btn-sm btn-del-type" data-id="${type.id}" style="padding:2px 8px; background:#e53935; color:#fff; border:none;">削除</button>
@@ -355,14 +358,17 @@ getSelectedTagIds(){
                 if (groupTags.length === 0) {
                     $tagsContainer.append('<div style="font-size:12px; color:#888;">中にタグがありません</div>');
                 } else {
-                    // タグごとの行（右側に編集・削除ボタン）
                     groupTags.forEach(tag => {
+                        // ★修正: data-id を付与し、ドラッグ用のハンドル (☰) を追加
                         const $tagRow = $(`
-                            <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px dashed #ccc;">
-                                <span style="font-size:13px; color:#555;">
-                                    <span style="display:inline-block; width:12px; height:12px; background:${tag.color}; margin-right:6px; border-radius:2px;"></span>
-                                    ${App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(tag.name) : tag.name}
-                                </span>
+                            <div data-id="${tag.id}" style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px dashed #ccc; background:#fff;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span class="drag-handle-tag" style="cursor:grab; color:#ccc; font-size:14px;" title="ドラッグで並び替え">☰</span>
+                                    <span style="font-size:13px; color:#555; display:flex; align-items:center;">
+                                        <span style="display:inline-block; width:12px; height:12px; background:${tag.color}; margin-right:6px; border-radius:2px;"></span>
+                                        ${App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(tag.name) : tag.name}
+                                    </span>
+                                </div>
                                 <div>
                                     <button class="btn btn-sm btn-edit-tag" data-id="${tag.id}" data-name="${tag.name}" style="padding:2px 6px; font-size:11px; margin-right:4px; background:#fff; color:#333; border:1px solid #ccc;">編集</button>
                                     <button class="btn btn-sm btn-del-tag" data-id="${tag.id}" style="padding:2px 6px; font-size:11px; background:#fff; color:#e53935; border:1px solid #ccc;">削除</button>
@@ -371,9 +377,56 @@ getSelectedTagIds(){
                         `);
                         $tagsContainer.append($tagRow);
                     });
+
+                    // ★追加: グループ内の「タグ」の並び替え設定
+                    if (window.Sortable) {
+                        new Sortable($tagsContainer[0], {
+                            animation: 150,
+                            handle: '.drag-handle-tag',
+                            onEnd: function () {
+                                const ids = [];
+                                $tagsContainer.children().each(function(){ ids.push($(this).data('id')); });
+                                App.api.post('?action=tag_reorder', { ids }).done(async () => {
+                                    await App.tags.loadAll();
+                                    App.tags.renderFilters();
+                                });
+                            }
+                        });
+                    }
                 }
                 $manageList.append($div);
             });
+
+            // ★追加: 「グループ」自体の並び替え設定
+            if (window.Sortable) {
+                new Sortable($manageList[0], {
+                    animation: 150,
+                    handle: '.drag-handle-type',
+                    onEnd: function () {
+                        const ids = [];
+                        $manageList.children().each(function(){ ids.push($(this).data('id')); });
+                        App.api.post('?action=tagtype_reorder', { ids }).done(async () => {
+                            await App.tags.loadAll();
+                            App.tags.renderFilters();
+                            // 並び順が変わると「どの色が優先されるか」が変わるのでカードの色を更新する
+                            if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList();
+                            
+                            // ボード上の全カードの色を再計算
+                            $('.card').each(function(){
+                                const id = $(this).attr('data-id');
+                                const color = App.tags.getColorForTask(id);
+                                if (color) {
+                                    const dark = App.utils && App.utils.shade ? App.utils.shade(color, -40) : '#222';
+                                    $(this).css('background', `linear-gradient(180deg, ${color}, ${dark})`)
+                                           .css('border-color', 'rgba(255,255,255,.10)');
+                                } else {
+                                    $(this).css({ background:'', borderColor:'' });
+                                }
+                            });
+                        });
+                    }
+                });
+            }
         }
     };
 
