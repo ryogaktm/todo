@@ -374,9 +374,21 @@ $manageList.on('change', '.cb-multi-toggle', function(){
                     });
                 }
             });
+// ▼ 追加: タグのメモ自動保存
+$manageList.on('change', '.tag-edit-note', function(){
+    const id = $(this).closest('.tag-manage-item').data('id');
+    const note = $(this).val().trim();
+    const $ta = $(this);
+    
+    $ta.addClass('is-saving'); // 保存中エフェクト
+    App.api.post('?action=tag_update', { id: id, note: note }).done(async ()=>{
+        await App.tags.loadAll(); // データだけ最新に（画面は再描画しないのでフォーカスが飛ばない）
+        setTimeout(() => $ta.removeClass('is-saving'), 300);
+    });
+});
 
-            // ▼ 追加: タグ自体の編集
-            $manageList.on('click', '.btn-edit-tag', function(){
+// ▼ 追加: タグ自体の編集
+$manageList.on('click', '.btn-edit-tag', function(){
                 const id = $(this).data('id');
                 const oldName = $(this).data('name');
                 const newName = prompt('タグ名を変更:', oldName);
@@ -439,25 +451,33 @@ $manageList.on('change', '.cb-multi-toggle', function(){
                 if (groupTags.length === 0) {
                     $tagsContainer.append('<div style="font-size:12px; color:#888;">中にタグがありません</div>');
                 } else {
-                    groupTags.forEach(tag => {
-                        // ★修正: data-id を付与し、ドラッグ用のハンドル (☰) を追加
-                        const $tagRow = $(`
-                            <div data-id="${tag.id}" style="display:flex; justify-content:space-between; align-items:center; padding:4px 0; border-bottom:1px dashed #ccc; background:#fff;">
-                                <div style="display:flex; align-items:center; gap:8px;">
-                                    <span class="drag-handle-tag" style="cursor:grab; color:#ccc; font-size:14px;" title="ドラッグで並び替え">☰</span>
-                                    <span style="font-size:13px; color:#555; display:flex; align-items:center;">
-                                        <span style="display:inline-block; width:12px; height:12px; background:${tag.color}; margin-right:6px; border-radius:2px;"></span>
-                                        ${App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(tag.name) : tag.name}
-                                    </span>
-                                </div>
-                                <div>
-                                    <button class="btn btn-sm btn-edit-tag" data-id="${tag.id}" data-name="${tag.name}" style="padding:2px 6px; font-size:11px; margin-right:4px; background:#fff; color:#333; border:1px solid #ccc;">編集</button>
-                                    <button class="btn btn-sm btn-del-tag" data-id="${tag.id}" style="padding:2px 6px; font-size:11px; background:#fff; color:#e53935; border:1px solid #ccc;">削除</button>
-                                </div>
-                            </div>
-                        `);
-                        $tagsContainer.append($tagRow);
-                    });
+// タグごとの行（メモ機能付き）
+groupTags.forEach(tag => {
+    const safeName = App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(tag.name) : tag.name;
+    const safeNote = App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(tag.note || '') : (tag.note || '');
+    
+    const $tagRow = $(`
+        <div class="tag-manage-item" data-id="${tag.id}">
+            <div class="tag-manage-item-head">
+                <div class="tag-manage-item-left">
+                    <span class="drag-handle-tag" title="ドラッグで並び替え">☰</span>
+                    <span class="tag-manage-item-name">
+                        <span class="tag-manage-item-color" style="background:${tag.color};"></span>
+                        ${safeName}
+                    </span>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-edit-tag" data-id="${tag.id}" data-name="${tag.name}" style="padding:2px 6px; font-size:11px; margin-right:4px; background:#fff; color:#333; border:1px solid #ccc;">編集</button>
+                    <button class="btn btn-sm btn-del-tag" data-id="${tag.id}" style="padding:2px 6px; font-size:11px; background:#fff; color:#e53935; border:1px solid #ccc;">削除</button>
+                </div>
+            </div>
+            <div class="tag-manage-item-note-wrap">
+                <textarea class="tag-edit-note" placeholder="タグのメモ・概要を追加 (入力すると自動保存)">${safeNote}</textarea>
+            </div>
+        </div>
+    `);
+    $tagsContainer.append($tagRow);
+});
 
                     // ★追加: グループ内の「タグ」の並び替え設定
                     if (window.Sortable) {

@@ -301,12 +301,12 @@ if ($action) {
         $rows = [];
         if (($fp = fopen($TAGS_CSV, 'r')) !== false) {
             fgetcsv($fp);
-            while ($r = fgetcsv($fp)) $rows[] = ['id' => $r[0], 'type_id' => $r[1], 'name' => $r[2], 'color' => $r[3]];
+            // 過去データで列が足りない場合もエラーにならないよう ?? '' で保護
+            while ($r = fgetcsv($fp)) $rows[] = ['id' => $r[0], 'type_id' => $r[1], 'name' => $r[2], 'color' => $r[3], 'note' => $r[6] ?? ''];
             fclose($fp);
         }
         json_out(['ok' => true, 'items' => $rows]);
     }
-
     // タスク-タグ紐付け一覧
     if ($action === 'task_tags_list') {
         $map = [];
@@ -423,24 +423,29 @@ if ($action) {
         json_out(['ok' => true]);
     }
 
-    // --- 追加: タグ名の更新 ---
+    // --- 追加: タグの更新 (名前・メモ両対応) ---
     if ($action === 'tag_update') {
         $id = (int)$_POST['id'];
-        $name = trim($_POST['name'] ?? '');
-        if (!$id || !$name) json_out(['ok' => false]);
+        $name = isset($_POST['name']) ? trim($_POST['name']) : null;
+        $note = isset($_POST['note']) ? trim($_POST['note']) : null;
+        if (!$id) json_out(['ok' => false]);
 
         $rows = [];
         if (($fp = fopen($TAGS_CSV, 'r')) !== false) {
             $header = fgetcsv($fp);
             while ($r = fgetcsv($fp)) {
-                if ((int)$r[0] === $id) $r[2] = $name;
-                $r[5] = date('c');
+                if ((int)$r[0] === $id) {
+                    if ($name !== null) $r[2] = $name;
+                    if ($note !== null) $r[6] = $note;
+                    $r[5] = date('c');
+                }
+                if (!isset($r[6])) $r[6] = ''; // 古いデータ行の補完
                 $rows[] = $r;
             }
             fclose($fp);
         }
         $fp = fopen($TAGS_CSV, 'w');
-        fputcsv($fp, ['id', 'type_id', 'name', 'color', 'created_at', 'updated_at']);
+        fputcsv($fp, ['id', 'type_id', 'name', 'color', 'created_at', 'updated_at', 'note']);
         foreach ($rows as $r) fputcsv($fp, $r);
         fclose($fp);
         json_out(['ok' => true]);
@@ -455,12 +460,15 @@ if ($action) {
         if (($fp = fopen($TAGS_CSV, 'r')) !== false) {
             $header = fgetcsv($fp);
             while ($r = fgetcsv($fp)) {
-                if ((int)$r[0] !== $id) $rows[] = $r;
+                if ((int)$r[0] !== $id) {
+                    if (!isset($r[6])) $r[6] = ''; // 古いデータ行の補完
+                    $rows[] = $r;
+                }
             }
             fclose($fp);
         }
         $fp = fopen($TAGS_CSV, 'w');
-        fputcsv($fp, ['id', 'type_id', 'name', 'color', 'created_at', 'updated_at']);
+        fputcsv($fp, ['id', 'type_id', 'name', 'color', 'created_at', 'updated_at', 'note']);
         foreach ($rows as $r) fputcsv($fp, $r);
         fclose($fp);
         json_out(['ok' => true]);
