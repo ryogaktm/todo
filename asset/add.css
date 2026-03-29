@@ -1219,3 +1219,60 @@ box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     background: #e8f5e9;
     border-color: #81c784;
 }
+
+/* =========================================
+   関連フォルダ・リンク機能
+   ========================================= */
+   .task-links-section {
+    margin-top: 15px;
+    margin-bottom: 10px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,.12);
+}
+.task-links-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.btn-add-link-row {
+    font-size: 11px;
+    padding: 3px 10px;
+    background: #333;
+    color: #fff;
+    border-radius: 4px;
+}
+.btn-add-link-row:hover { background: #555; }
+.tl-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-bottom: 6px;
+    background: rgba(255,255,255,.08);
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+.tl-in-title { width: 140px !important; padding: 6px 8px !important; font-size: 13px !important; height: auto !important; }
+.tl-in-path { flex: 1; padding: 6px 8px !important; font-size: 13px !important; height: auto !important; }
+.tl-type-btn { padding: 4px 8px; font-size: 12px; background: #444; border: 1px solid #555; border-radius: 4px; color: #ccc;}
+.tl-type-btn.is-selected { background: #6ea0ff; color: #fff; border-color: #6ea0ff; font-weight: bold; }
+.tl-type-btn:hover:not(.is-selected) { background: #555; color: #fff; }
+.tl-btn-save { padding: 4px 12px; font-size: 12px; background: #4CAF50; color: #fff; border: none; border-radius: 4px; font-weight: bold; }
+.tl-btn-del, .tl-btn-edit { background: transparent; border: none; color: #aaa; cursor: pointer; font-size: 14px; padding: 0 4px; }
+.tl-btn-del:hover { color: #e53935; }
+.tl-btn-edit:hover { color: #fff; }
+.tl-icon { font-size: 14px; margin-right: 4px; }
+.tl-link-go {
+    flex: 1;
+    color: #6ea0ff;
+    text-decoration: none;
+    font-size: 14px;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: bold;
+}
+.tl-link-go:hover { color: #8bb4ff; text-decoration: underline; }

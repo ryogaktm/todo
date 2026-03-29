@@ -62,10 +62,11 @@ function csv_read_all($path)
     $rows = [];
     if (!file_exists($path)) return $rows;
     if (($fp = fopen($path, 'r')) !== false) {
+
         fgetcsv($fp); // ヘッダスキップ
         while (($data = fgetcsv($fp)) !== false) {
             // カラム不足を補完
-            $data = array_pad($data, 22, ''); // 余裕を見て多めに
+            $data = array_pad($data, 24, ''); // ★修正: links用に24に増やす
             $rows[] = [
                 'id' => (int)$data[0],
                 'title' => (string)$data[1],
@@ -88,8 +89,9 @@ function csv_read_all($path)
                 'ball_theirs' => (string)$data[17],
                 'ball_prod' => (string)$data[18],
                 'ball_due' => (string)$data[19],
-                'est_hours' => (string)$data[20], // 追加
+                'est_hours' => (string)$data[20],
                 'created_at' => $data[21] ?: date('c'),
+                'links' => (string)$data[23],
             ];
         }
         fclose($fp);
@@ -131,7 +133,8 @@ function csv_write_all($path, $rows)
         'ball_due',
         'est_hours',
         'created_at',
-        'updated_at'
+        'updated_at',
+        'links'
     ]);
 
     foreach ($rows as $r) {
@@ -159,6 +162,7 @@ function csv_write_all($path, $rows)
             (string)($r['est_hours'] ?? ''),
             (string)($r['created_at'] ?? date('c')),
             date('c'),
+            (string)($r['links'] ?? '[]'),
         ]);
     }
 
@@ -179,7 +183,22 @@ function json_out($arr)
 $action = $_GET['action'] ?? null;
 
 if ($action) {
-    // タスク一覧
+    // ★追加: ローカルフォルダをエクスプローラーで開く
+    if ($action === 'open_folder') {
+        $path = $_POST['path'] ?? '';
+        if ($path && is_dir($path)) {
+            $os = strtoupper(substr(PHP_OS, 0, 3));
+            if ($os === 'WIN') {
+                exec('explorer ' . escapeshellarg(str_replace('/', '\\', $path)));
+            } elseif ($os === 'DAR') {
+                exec('open ' . escapeshellarg($path) . ' > /dev/null 2>&1 &');
+            }
+            json_out(['ok' => true]);
+        } else {
+            json_out(['ok' => false, 'error' => 'フォルダが存在しないか、パスが間違っています']);
+        }
+    }
+
     // タスク一覧
     if ($action === 'list') {
         $rows = csv_read_all($CSV_PATH);

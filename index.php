@@ -258,6 +258,15 @@ include_once(__DIR__ . '/asset/function.php');
                     <label class="input-label" for="taskTitle">タイトル</label>
                     <input type="text" id="taskTitle" maxlength="120" />
                 </div>
+
+                <div class="task-links-section">
+                    <div class="task-links-header">
+                        <label class="input-label">関連フォルダ・リンク</label>
+                        <button type="button" class="btn btn-add-link-row" id="btnAddLinkRow">＋追加</button>
+                    </div>
+                    <div id="taskLinksContainer"></div>
+                </div>
+
                 <div>
                     <label class="input-label" for="taskBody">本文</label>
                     <textarea id="taskBody"></textarea>

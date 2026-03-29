@@ -1113,10 +1113,11 @@ App.tasks.renderCardTitle = renderCardTitle;
         'data-delivery': item.delivery_date || '',
         'data-start-time':    item.start_time    || '',
         'data-testup-time':   item.testup_time   || '',
-        'data-proof-time':    item.proof_time    || '',
+'data-proof-time':    item.proof_time    || '',
         'data-delivery-time': item.delivery_time || '',
         'data-ball-due-time': item.ball_due_time || '',
-        'data-est-hours': (item.est_hours ?? '')
+        'data-est-hours': (item.est_hours ?? ''),
+        'data-links': (item.links || '[]') // ★追加
       });
   
       $el.data('raw_title', item.title || '');
@@ -1198,7 +1199,8 @@ App.tasks.renderCardTitle = renderCardTitle;
         ball_prod:     ($card.data('ball_prod')||''),
         ball_due:      ($card.attr('data-ball-due')||''),
         ball_due_time: ($card.attr('data-ball-due-time')||''),
-        est_hours: ($card.attr('data-est-hours') || '')
+        est_hours: ($card.attr('data-est-hours') || ''),
+        links: ($card.attr('data-links') || '[]')
       };
     }
     function makeDraggable($card){
@@ -1392,7 +1394,8 @@ $card.off('dblclick').on('dblclick', function(e){
         $ballDueTime.val(item.ball_due_time || '');
         setBallSide(item.ball_side ?? 0);
         $estHours.val(item.est_hours ?? '');
-        $ballProd.val(item.ball_prod || ''); 
+        $ballProd.val(item.ball_prod || '');
+        renderLinksUI(item.links);
         
         if (!App.state.SUB_ID && App.state.editingId && $subtasksPane.length){
           $subtasksPane.prop('hidden', false).attr('data-parent', String(App.state.editingId));
@@ -1458,6 +1461,7 @@ $card.off('dblclick').on('dblclick', function(e){
          $ballDueTime.val('');
          setBallSide(0);
          $estHours.val('');
+         renderLinksUI('[]');
       }
       $title.trigger('focus');
     }
@@ -1510,6 +1514,21 @@ $card.off('dblclick').on('dblclick', function(e){
           return String(n);
         })()
       };
+      
+      // ★追加: リンクデータの収集（表示中・編集中どちらも拾う）
+      const links = [];
+      $('#taskLinksContainer .tl-row').each(function(){
+          if ($(this).hasClass('tl-display')) {
+              links.push({ type: $(this).data('type'), title: $(this).data('title'), path: $(this).data('path') });
+          } else if ($(this).hasClass('tl-edit')) {
+              const type = $(this).data('type');
+              const title = $(this).find('.tl-in-title').val().trim();
+              const path = $(this).find('.tl-in-path').val().trim();
+              if(type && title && path) links.push({ type, title, path }); // 確定忘れも救済
+          }
+      });
+      payload.links = JSON.stringify(links);
+
       // ★ 子ページでは親カテゴリを強制上書き
       return App.utils.ensureChildCategory(payload);
     }
@@ -1529,7 +1548,8 @@ $card.off('dblclick').on('dblclick', function(e){
     'data-proof-time':    p.proof_time    || '',
     'data-delivery-time': p.delivery_time || '',
     'data-ball-due-time': p.ball_due_time || '',
-    'data-est-hours': (p.est_hours ?? '')
+    'data-est-hours': (p.est_hours ?? ''),
+    'data-links': (p.links || '[]')
    });
    $card.data('ball_mine',   p.ball_mine   || '');
    $card.data('ball_theirs', p.ball_theirs || '');
@@ -2535,3 +2555,106 @@ Object.assign(App.tasks.api, {
   
   })(window.App);
   
+  // ==== 関連フォルダ・リンクの制御機能 ====
+function renderLinksUI(linksJson) {
+  const $cont = $('#taskLinksContainer');
+  $cont.empty();
+  let links = [];
+  try { links = JSON.parse(linksJson || '[]'); } catch(e){}
+  
+  links.forEach(lk => $cont.append(createDisplayRow(lk.title, lk.type, lk.path)));
+  checkAddButton();
+}
+
+function checkAddButton() {
+  if ($('#taskLinksContainer .tl-row').length >= 6) $('#btnAddLinkRow').hide();
+  else $('#btnAddLinkRow').show();
+}
+
+function createEditRow(title = '', type = '', path = '') {
+  const $row = $('<div class="tl-row tl-edit"></div>').data('type', type);
+  $row.append(`<input type="text" class="tl-in-title" placeholder="表示名" value="${App.utils.escapeHtml(title)}">`);
+  
+  const $btnFolder = $(`<button type="button" class="btn tl-type-btn tl-btn-folder ${type==='folder'?'is-selected':''}">📁 フォルダ</button>`);
+  const $btnLink = $(`<button type="button" class="btn tl-type-btn tl-btn-link ${type==='link'?'is-selected':''}">🔗 リンク</button>`);
+  
+  if (type === 'folder') $btnLink.hide();
+  if (type === 'link') $btnFolder.hide();
+  
+  $row.append($btnFolder).append($btnLink);
+  
+  const $inPath = $(`<input type="text" class="tl-in-path" placeholder="${type==='link'?'URL':'ローカルパス'}" value="${App.utils.escapeHtml(path)}">`);
+  if (!type) $inPath.hide();
+  $row.append($inPath);
+  
+  $row.append(`<button type="button" class="btn tl-btn-save">確定</button>`);
+  $row.append(`<button type="button" class="tl-btn-del" title="削除">✕</button>`);
+  return $row;
+}
+
+function createDisplayRow(title, type, path) {
+  const icon = type === 'folder' ? '📁' : '🔗';
+  const $row = $(`<div class="tl-row tl-display" data-type="${type}" data-title="${App.utils.escapeHtml(title)}" data-path="${App.utils.escapeHtml(path)}"></div>`);
+  $row.append(`<span class="tl-icon">${icon}</span>`);
+  $row.append(`<a href="#" class="tl-link-go">${App.utils.escapeHtml(title)}</a>`);
+  $row.append(`<button type="button" class="tl-btn-edit" title="編集">✏️</button>`);
+  $row.append(`<button type="button" class="tl-btn-del" title="削除">✕</button>`);
+  return $row;
+}
+
+// リンク関連イベントバインディング
+$('#btnAddLinkRow').on('click', function(){
+  $('#taskLinksContainer').append(createEditRow());
+  checkAddButton();
+});
+
+$('#modalBackdrop').on('click', '.tl-btn-folder', function(){
+  const $row = $(this).closest('.tl-row');
+  $row.find('.tl-btn-link').hide();
+  $(this).addClass('is-selected');
+  $row.find('.tl-in-path').attr('placeholder', 'ローカルパス (例: C:\\Users\\...)').show().focus();
+  $row.data('type', 'folder');
+});
+
+$('#modalBackdrop').on('click', '.tl-btn-link', function(){
+  const $row = $(this).closest('.tl-row');
+  $row.find('.tl-btn-folder').hide();
+  $(this).addClass('is-selected');
+  $row.find('.tl-in-path').attr('placeholder', 'URL (例: https://...)').show().focus();
+  $row.data('type', 'link');
+});
+
+$('#modalBackdrop').on('click', '.tl-btn-save', function(){
+  const $row = $(this).closest('.tl-row');
+  const title = $row.find('.tl-in-title').val().trim();
+  const path = $row.find('.tl-in-path').val().trim();
+  const type = $row.data('type');
+  if(!title || !type || !path) { App.utils.showToast('タイトル、種類、パスをすべて入力してください'); return; }
+  $row.replaceWith(createDisplayRow(title, type, path));
+  checkAddButton();
+});
+
+$('#modalBackdrop').on('click', '.tl-btn-edit', function(){
+  const $row = $(this).closest('.tl-row');
+  $row.replaceWith(createEditRow($row.data('title'), $row.data('type'), $row.data('path')));
+  checkAddButton();
+});
+
+$('#modalBackdrop').on('click', '.tl-btn-del', function(){
+  $(this).closest('.tl-row').remove();
+  checkAddButton();
+});
+
+$('#modalBackdrop').on('click', '.tl-link-go', function(e){
+  e.preventDefault();
+  const $row = $(this).closest('.tl-row');
+  const type = $row.data('type');
+  const path = $row.data('path');
+  if (type === 'link') {
+      window.open(path, '_blank');
+  } else if (type === 'folder') {
+      App.api.post('?action=open_folder', { path: path }).done(res => {
+          if(!res.ok) App.utils.showToast(res.error || 'フォルダが開けません');
+      });
+  }
+});
