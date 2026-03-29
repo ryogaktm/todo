@@ -568,7 +568,22 @@ function applyBallFilterAndRenderList(){
 // カテゴリ側カウント
 const catCounts = {};
 const tagCounts = {};
-let totalForTags = 0; // ★追加: タグの「すべて」用のカウント
+
+// ==== タグカウントの準備（ファセット方式） ====
+const tagToGroup = {}; 
+const activeIdsByGroup = {}; 
+const groupTotalCounts = {}; 
+$('.tag-filter-group').each(function(gIdx){
+    const id = Number($(this).find('.tag-filter-btn.active').data('id'));
+    if (id) activeIdsByGroup[gIdx] = id;
+    groupTotalCounts[gIdx] = 0;
+    $(this).find('.tag-filter-btn').each(function(){
+        const tid = Number($(this).data('id'));
+        if (tid) tagToGroup[tid] = gIdx;
+    });
+});
+
+// 日付差分ヘルパ
 
 // 日付差分ヘルパ
 
@@ -625,19 +640,17 @@ let totalForTags = 0; // ★追加: タグの「すべて」用のカウント
   // D. テキスト検索一致？
   const fitsText = matchTextFilter($c);
 
-//  タグフィルタ一致？
+// タグフィルタ一致？ (グループごとのAND条件)
+const myTags = ($c.attr('data-tags') || '').split(',').map(Number).filter(n => n > 0);
 let fitsTag = true;
-const activeIds = [];
-$('.tag-filter-btn.active').each(function(){ 
-    const id = Number($(this).data('id'));
-    if (id) activeIds.push(id); 
-});
-if (activeIds.length > 0) {
-    const myTags = ($c.attr('data-tags') || '').split(',').map(Number);
-    fitsTag = activeIds.every(id => myTags.includes(id));
+for (const aId of Object.values(activeIdsByGroup)) {
+    if (!myTags.includes(aId)) {
+        fitsTag = false;
+        break;
+    }
 }
 
-  // E. このカードをハイライト対象にする？（fitsTagを追加）
+// E. このカードをハイライト対象にする？（fitsTagを追加）
   const highlight = (fitsSide && fitsDue && fitsCat && fitsText && fitsTag);
 
     // 表示は常に DOM に残す。対象外は半透明
@@ -696,13 +709,29 @@ if (activeIds.length > 0) {
     catCounts[key]++;
   }
 
-// ★追加: 4) タグ側カウント
+// タグ側カウント（自グループ以外の条件を満たすものだけカウント）
 if (fitsSide && fitsDue && fitsCat && fitsText){
-  totalForTags++; // ★ここを追加: タグ以外の条件を満たす全件数を数える
-  const myTags = ($c.attr('data-tags') || '').split(',').map(Number).filter(n => n > 0);
-  myTags.forEach(tid => {
-      tagCounts[tid] = (tagCounts[tid] || 0) + 1;
-  });
+  for (let gIdxStr in groupTotalCounts) {
+      const gIdx = Number(gIdxStr);
+      
+      let matchOtherGroups = true;
+      for (const [otherGIdxStr, aId] of Object.entries(activeIdsByGroup)) {
+          if (Number(otherGIdxStr) === gIdx) continue;
+          if (!myTags.includes(aId)) {
+              matchOtherGroups = false;
+              break;
+          }
+      }
+
+      if (matchOtherGroups) {
+          groupTotalCounts[gIdx]++; 
+          myTags.forEach(tid => {
+              if (tagToGroup[tid] === gIdx) {
+                  tagCounts[tid] = (tagCounts[tid] || 0) + 1;
+              }
+          });
+      }
+  }
 }
 
 }); // each card
@@ -757,19 +786,20 @@ $('#categoryBar .category-chip').each(function(){
 
 
 // ★追加: ==== タグ帯の数字更新 ====
-$('.tag-filter-btn').each(function(){
-  const $btn = $(this);
-  const tid = Number($btn.data('id'));
-  if (!tid) {
-      // ★変更: 「すべて」ボタンの場合は総数を表示する
-      $btn.text(`すべて (${totalForTags})`);
-      return; 
-  }
-  const tagName = $btn.data('name') || '';
-  const count = tagCounts[tid] || 0;
-  $btn.text(`${tagName} (${count})`);
+$('.tag-filter-group').each(function(gIdx){
+  $(this).find('.tag-filter-btn').each(function(){
+      const $btn = $(this);
+      const tid = Number($btn.data('id'));
+      if (!tid) {
+          const count = groupTotalCounts[gIdx] || 0;
+          $btn.text(`すべて (${count})`);
+      } else {
+          const tagName = $btn.data('name') || '';
+          const count = tagCounts[tid] || 0;
+          $btn.text(`${tagName} (${count})`);
+      }
+  });
 });
-
 // ★追加: 絞り込みが終わって表示件数が確定したので、スケールを再計算する
 updateCardScale();
 }
