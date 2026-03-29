@@ -691,7 +691,18 @@ ease-in-out infinite;
   position: absolute; right: 4px; top: 0;
   background: transparent; border: 0; cursor: pointer; font-size: 16px;
 }
-.card.ball-dim { opacity:.2; filter:saturate(.6);   pointer-events: none; z-index: 0;}
+
+.card.ball-dim {
+  opacity: 0.15 !important;
+  filter: saturate(0.2) grayscale(0.5) !important; /* より色を抜いて背景に馴染ませる */
+  pointer-events: none !important;
+  z-index: 0 !important;
+  animation: none !important; /* ★ カード全体の点滅アニメーションを強制停止 */
+}
+.card.ball-dim::after {
+  animation: none !important; /* ★ 右上の「赤い丸バッジ」の点滅も強制停止 */
+  opacity: 0.3 !important;    /* バッジ自体も薄くする */
+}
 
 /* 右端の半透明矢印（デフォはこれだけ表示） */
 .balllist-peek {
