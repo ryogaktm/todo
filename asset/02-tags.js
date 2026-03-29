@@ -64,7 +64,7 @@ getColorForTask(taskId){
     return null;
 },
 
-// タスクカード上にタグのバッジを描画する
+// タスクカード上にタグのバッジを描画する（タイトルも書き換える）
 renderCardTags($card){
     const $wrap = $card.find('.card-tags');
     if (!$wrap.length) return;
@@ -72,37 +72,35 @@ renderCardTags($card){
     
     const tagStr = $card.attr('data-tags') || '';
     const tids = tagStr.split(',').map(Number).filter(n => n > 0);
-    if (tids.length === 0) return;
     
-    // ★変更：常に「タグ管理画面のグループ順」に合わせてバッジを並び替える
+    // ★追加：元の生タイトルを取得しておく
+    const rawTitle = $card.data('raw_title') || '';
+
+    if (tids.length === 0) {
+        // タグがない場合は元のタイトルだけ表示
+        $card.find('.title .t').text(rawTitle);
+        return;
+    }
+    
+    // 常に「タグ管理画面のグループ順」に合わせてバッジを並び替える
     const sortedTags = [];
     TAG_TYPES.forEach(type => {
         const groupTags = TAGS.filter(t => t.type_id == type.id && tids.includes(Number(t.id)));
         groupTags.forEach(tag => sortedTags.push(tag));
     });
     
+    // ★追加：一番最初のタグ名をタイトルの前につける
+    if (sortedTags.length > 0) {
+        $card.find('.title .t').text(`${sortedTags[0].name}_${rawTitle}`);
+    } else {
+        $card.find('.title .t').text(rawTitle);
+    }
+
     sortedTags.forEach(tag => {
         $wrap.append(`<span class="card-tag-badge" style="border-left-color: ${tag.color};">${App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(tag.name) : tag.name}</span>`);
     });
 },
 
-        // タスクカード上にタグのバッジを描画する
-        renderCardTags($card){
-            const $wrap = $card.find('.card-tags');
-            if (!$wrap.length) return;
-            $wrap.empty();
-            
-            const tagStr = $card.attr('data-tags') || '';
-            const tids = tagStr.split(',').map(Number).filter(n => n > 0);
-            if (tids.length === 0) return;
-            
-            tids.forEach(tid => {
-                const tag = TAGS.find(t => t.id == tid);
-                if (tag) {
-                    $wrap.append(`<span class="card-tag-badge" style="border-left-color: ${tag.color};">${App.utils && App.utils.escapeHtml ? App.utils.escapeHtml(tag.name) : tag.name}</span>`);
-                }
-            });
-        },
 
         // 画面上部フィルタ描画
         renderFilters(){

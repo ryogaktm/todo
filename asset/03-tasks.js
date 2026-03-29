@@ -657,13 +657,14 @@ for (const aId of Object.values(activeIdsByGroup)) {
     $c.removeClass('ball-hide');
     $c.toggleClass('ball-dim', !highlight);
 
-    // 右パネルに載せるのは highlight だけ
-    if (highlight){
-      const id    = $c.attr('data-id');
-      const title = $c.data('raw_title') || $c.find('.title .t').text() || '';
-      const mineTxt   = String($c.data('ball_mine')   || '').trim();
-      const theirsTxt = String($c.data('ball_theirs') || '').trim();
-      const prodTxt   = String($c.data('ball_prod')   || '').trim(); // ★ 追加
+   // 右パネルに載せるのは highlight だけ
+   if (highlight){
+    const id    = $c.attr('data-id');
+    // ★修正：タグ名が付加された表示用タイトルをそのまま拾う
+    const title = $c.find('.title .t').text() || $c.data('raw_title') || '';
+    const mineTxt   = String($c.data('ball_mine')   || '').trim();
+    const theirsTxt = String($c.data('ball_theirs') || '').trim();
+      const prodTxt   = String($c.data('ball_prod')   || '').trim(); 
 
       if (side === 0){
         mineItems.push({ id, title, text: mineTxt, catId });
@@ -807,19 +808,12 @@ updateCardScale();
 
 // categories.js からも呼べるように公開する
 App.tasks.applyBallFilterAndRenderList = applyBallFilterAndRenderList;
-
 function renderBallTwoCols(mineItems, theirsItems, prodItems){
-  prodItems = prodItems || [];  // ★ 互換用（引数2つで呼ばれても大丈夫に）
+  prodItems = prodItems || [];
 
   const safe = (s)=> App.utils.escapeHtml(String(s||''));
-  const getDisplayTitle = (it)=>{
-    let cid = Number(it.catId ?? 0);
-    if (!Number.isFinite(cid) || cid < 0){
-      const $card = $(`#board .card[data-id="${it.id}"]`);
-      cid = Number($card.attr('data-cat') || 0);
-    }
-    return composeDisplayTitle(it.title || '', cid);
-  };
+  // 古いカテゴリ合成関数を削除し、そのままのタイトルを使う
+  const getDisplayTitle = (it) => it.title;
 
   // こっち
   if (!mineItems.length){
