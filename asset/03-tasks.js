@@ -2570,10 +2570,38 @@ function checkAddButton() {
   if ($('#taskLinksContainer .tl-row').length >= 6) $('#btnAddLinkRow').hide();
   else $('#btnAddLinkRow').show();
 }
+// ==== 関連フォルダ・リンクの制御機能 ====
+function renderLinksUI(linksJson) {
+  const $cont = $('#taskLinksContainer');
+  $cont.empty();
+  let links = [];
+  try { links = JSON.parse(linksJson || '[]'); } catch(e){}
+  
+  links.forEach(lk => $cont.append(createDisplayRow(lk.title, lk.type, lk.path)));
+  checkAddButton();
+}
 
-function createEditRow(title = '', type = '', path = '') {
+function checkAddButton() {
+  if ($('#taskLinksContainer .tl-row').length >= 6) $('#btnAddLinkRow').hide();
+  else $('#btnAddLinkRow').show();
+}
+
+// ★修正: 戻る機能と、プレースホルダー切り替え機能を統合した createEditRow
+function createEditRow(title = '', type = '', path = '', isNew = false) {
   const $row = $('<div class="tl-row tl-edit"></div>').data('type', type);
-  $row.append(`<input type="text" class="tl-in-title" placeholder="表示名" value="${App.utils.escapeHtml(title)}">`);
+  $row.data('orig-title', title);
+  $row.data('orig-type', type);
+  $row.data('orig-path', path);
+  $row.data('is-new', isNew);
+
+//  種類に応じて実際の初期値（value）を決める
+let currentTitle = title;
+if (currentTitle === '') {
+    if (type === 'folder') currentTitle = '対象フォルダ';
+    if (type === 'link')   currentTitle = '対象リンク';
+}
+
+$row.append(`<input type="text" class="tl-in-title" placeholder="表示名" value="${App.utils.escapeHtml(currentTitle)}">`);
   
   const $btnFolder = $(`<button type="button" class="btn tl-type-btn tl-btn-folder ${type==='folder'?'is-selected':''}">📁 フォルダ</button>`);
   const $btnLink = $(`<button type="button" class="btn tl-type-btn tl-btn-link ${type==='link'?'is-selected':''}">🔗 リンク</button>`);
@@ -2583,10 +2611,13 @@ function createEditRow(title = '', type = '', path = '') {
   
   $row.append($btnFolder).append($btnLink);
   
-  const $inPath = $(`<input type="text" class="tl-in-path" placeholder="${type==='link'?'URL':'ローカルパス'}" value="${App.utils.escapeHtml(path)}">`);
+  const $inPath = $(`<input type="text" class="tl-in-path" placeholder="${type==='link'?'URL (例: https://...)':'パスをペースト (例: C:\\Users\\...)'}" value="${App.utils.escapeHtml(path)}">`);
   if (!type) $inPath.hide();
+
   $row.append($inPath);
   
+  // 戻るボタン
+  $row.append(`<button type="button" class="btn tl-btn-cancel-edit">戻る</button>`);
   $row.append(`<button type="button" class="btn tl-btn-save">確定</button>`);
   $row.append(`<button type="button" class="tl-btn-del" title="削除">✕</button>`);
   return $row;
@@ -2602,24 +2633,52 @@ function createDisplayRow(title, type, path) {
   return $row;
 }
 
-// リンク関連イベントバインディング
+// === イベントバインディング ===
 $('#btnAddLinkRow').on('click', function(){
-  $('#taskLinksContainer').append(createEditRow());
+  $('#taskLinksContainer').append(createEditRow('', '', '', true));
   checkAddButton();
 });
 
+// 戻る（キャンセル）ボタンの処理
+$('#modalBackdrop').on('click', '.tl-btn-cancel-edit', function(){
+  const $row = $(this).closest('.tl-row');
+  if ($row.data('is-new')) {
+      $row.remove(); // 新規追加の取り消しなら行ごと消す
+  } else {
+      $row.replaceWith(createDisplayRow($row.data('orig-title'), $row.data('orig-type'), $row.data('orig-path')));
+  }
+  checkAddButton();
+});
+
+// ボタンクリック時の連動処理（フォルダ）
 $('#modalBackdrop').on('click', '.tl-btn-folder', function(){
   const $row = $(this).closest('.tl-row');
   $row.find('.tl-btn-link').hide();
   $(this).addClass('is-selected');
-  $row.find('.tl-in-path').attr('placeholder', 'ローカルパス (例: C:\\Users\\...)').show().focus();
+  
+  // ★追加: タイトルが空、または「対象リンク」なら「対象フォルダ」という文字を実際に入力する
+  const $titleInp = $row.find('.tl-in-title');
+  const currentVal = $titleInp.val().trim();
+  if (currentVal === '' || currentVal === '対象リンク') {
+      $titleInp.val('対象フォルダ');
+  }
+  
+  $row.find('.tl-in-path').attr('placeholder', 'パスをペースト (例: C:\\Users\\...)').show().focus();
   $row.data('type', 'folder');
 });
 
+// ボタンクリック時の連動処理（リンク）
 $('#modalBackdrop').on('click', '.tl-btn-link', function(){
   const $row = $(this).closest('.tl-row');
   $row.find('.tl-btn-folder').hide();
   $(this).addClass('is-selected');
+
+  const $titleInp = $row.find('.tl-in-title');
+  const currentVal = $titleInp.val().trim();
+  if (currentVal === '' || currentVal === '対象フォルダ') {
+      $titleInp.val('対象リンク');
+  }
+  
   $row.find('.tl-in-path').attr('placeholder', 'URL (例: https://...)').show().focus();
   $row.data('type', 'link');
 });
@@ -2636,7 +2695,7 @@ $('#modalBackdrop').on('click', '.tl-btn-save', function(){
 
 $('#modalBackdrop').on('click', '.tl-btn-edit', function(){
   const $row = $(this).closest('.tl-row');
-  $row.replaceWith(createEditRow($row.data('title'), $row.data('type'), $row.data('path')));
+  $row.replaceWith(createEditRow($row.data('title'), $row.data('type'), $row.data('path'), false));
   checkAddButton();
 });
 
@@ -2658,3 +2717,10 @@ $('#modalBackdrop').on('click', '.tl-link-go', function(e){
       });
   }
 });
+
+// `applyPayloadToCard` への拡張
+const _originalApply = App.tasks.api.applyPayloadToCard;
+App.tasks.api.applyPayloadToCard = function($card, p) {
+  _originalApply($card, p);
+  $card.attr('data-links', p.links || '[]');
+};
