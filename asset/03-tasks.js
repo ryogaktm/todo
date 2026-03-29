@@ -1590,11 +1590,6 @@ $card.off('dblclick').on('dblclick', function(e){
         resetSaving();
         return;
       }
-      if (!p.start_date && (p.testup_date || p.proof_date || p.delivery_date)){
-        App.utils.showToast('着手日が未設定のまま、他の日付は設定できません');
-        resetSaving();
-        return;
-      }
     
       if (App.state.editingId === null){
         // ★新規追加の処理
