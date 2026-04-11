@@ -405,9 +405,37 @@ include_once(__DIR__ . '/asset/function.php');
         </div>
     </div>
 
+    <div class="modal-backdrop" id="tagEditModalBackdrop" aria-hidden="true" style="z-index: 60;">
+        <div class="modal" role="dialog" aria-modal="true" style="height:auto; max-height: 90vh; background:#fff; color:#000;">
+            <header style="background:#eee; color:#000; display:flex; justify-content:space-between; align-items:center; padding:10px 16px;">
+                <div style="font-weight:bold;">タグ詳細編集</div>
+                <button class="btn" id="tagEditModalClose" style="background:transparent; color:#000; font-size:18px; padding:0; border:none; cursor:pointer;">×</button>
+            </header>
+            <div class="body" style="background:#fff; color:#000; padding:16px;">
+                <div>
+                    <label class="input-label" style="color:#555;">タイトル (タグ名)</label>
+                    <input type="text" id="tagEditName" style="background:#f4f5f7; color:#000; border:1px solid #ccc; width:100%; padding:10px; border-radius:6px; font-weight:bold;" />
+                </div>
 
+                <div class="task-links-section" style="margin-top: 15px; background:#f4f5f7; border: 1px solid #ccc;">
+                    <div class="task-links-header">
+                        <label class="input-label" style="margin-bottom:0; color:#555;">関連フォルダ・リンク</label>
+                        <button type="button" class="btn btn-add-link-row" id="btnAddTagLinkRow" style="background:#555; color:#fff;">＋追加</button>
+                    </div>
+                    <div id="tagLinksContainer"></div>
+                </div>
 
-
+                <div style="margin-top: 15px;">
+                    <label class="input-label" style="color:#555;">本文 (メモ)</label>
+                    <textarea id="tagEditNote" style="background:#f4f5f7; color:#000; border:1px solid #ccc; width:100%; padding:10px; border-radius:6px; min-height: 120px;"></textarea>
+                </div>
+            </div>
+            <div class="row-actions" style="background:#eee; border-top:1px solid #ccc; display:flex;">
+                <button class="btn" id="btnCancelTagEdit" style="background:#888; color:#fff; border:none;">キャンセル</button>
+                <button class="btn btn-complete" id="btnSaveTagEdit" style="background:#4CAF50; color:#fff; border:none; margin-left:auto; font-weight:bold;">保存</button>
+            </div>
+        </div>
+    </div>
     <div class="toast" id="toast"></div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>

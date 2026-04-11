@@ -135,21 +135,58 @@ renderCardTags($card){
         });
         $group.append($allBtn);
 
-        // タグボタンの作成
-        groupTags.forEach(tag => {
-            const isActive = activeIds.includes(Number(tag.id));
-            const $btn = $(`<button class="tag-filter-btn ${isActive ? 'active' : ''}" data-id="${tag.id}" data-name="${tag.name}" style="border-left-color: ${tag.color};">${tag.name} (0)</button>`);
-            
-            $btn.on('click', function(){
-                if ($(this).hasClass('active')) return; // 選択中は解除しない
-                $group.find('.tag-filter-btn').removeClass('active'); // グループ内の他を解除
-                $(this).addClass('active'); // 自分を選択
-                if (App.tasks && App.tasks.applyBallFilterAndRenderList) {
-                    App.tasks.applyBallFilterAndRenderList();
-                }
-            });
-            $group.append($btn);
-        });
+// タグボタンの作成
+groupTags.forEach(tag => {
+    const isActive = activeIds.includes(Number(tag.id));
+    
+    // ★追加: ボタンと鉛筆アイコンをくっつけるための「枠（ラッパー）」
+    const $wrap = $('<div style="display:inline-flex; align-items:stretch; border-radius:4px; overflow:hidden; background:#333;"></div>');
+
+    // ★修正: 枠の中に入れるため、角丸や余白をリセットしたボタン
+    const $btn = $(`<button class="tag-filter-btn ${isActive ? 'active' : ''}" data-id="${tag.id}" data-name="${tag.name}" style="border-left-color: ${tag.color}; border-radius:0; margin:0;" title="左クリック: 絞り込み / 右・ダブルクリック: 詳細編集">${tag.name} (0)</button>`);
+    
+    // ★追加: 鉛筆ボタン
+    const $editBtn = $(`<button type="button" title="詳細編集" style="background:transparent; border:none; border-left:1px solid #444; color:#aaa; cursor:pointer; padding:0 6px; font-size:11px; transition:0.2s;">✏️</button>`);
+    
+    // 鉛筆ボタンにマウスを乗せたときのアニメーション
+    $editBtn.on('mouseover', function(){ $(this).css({background:'#555', color:'#fff'}); });
+    $editBtn.on('mouseout',  function(){ $(this).css({background:'transparent', color:'#aaa'}); });
+
+    $btn.on('click', function(){
+        if ($(this).hasClass('active')) return; // 選択中は解除しない
+        $group.find('.tag-filter-btn').removeClass('active'); // グループ内の他を解除
+        $(this).addClass('active'); // 自分を選択
+        if (App.tasks && App.tasks.applyBallFilterAndRenderList) {
+            App.tasks.applyBallFilterAndRenderList();
+        }
+    });
+
+    // 編集モーダルを開く共通処理
+    const openEditModal = () => {
+        App.state.editingTagId = tag.id;
+        $('#tagEditName').val(tag.name || '');
+        $('#tagEditNote').val(tag.note || '');
+        if (typeof window.renderTagLinksUI === 'function') window.renderTagLinksUI(tag.links);
+        $('#tagEditModalBackdrop').css('display', 'flex').attr('aria-hidden', 'false');
+    };
+
+    // 右クリック、またはダブルクリック（慣れている人向けのショートカットとして残す）
+    $btn.on('contextmenu dblclick', function(e) {
+        e.preventDefault(); 
+        openEditModal();
+    });
+
+    // ★追加: 鉛筆ボタンをクリックした時
+    $editBtn.on('click', function(e){
+        e.preventDefault();
+        openEditModal();
+    });
+
+    // 枠に2つのボタンを入れて、グループに追加
+    $wrap.append($btn).append($editBtn);
+    $group.append($wrap);
+});
+
         
         $filterContainer.append($group);
     });
@@ -534,5 +571,184 @@ groupTags.forEach(tag => {
             }
         }
     };
+
+    // =========================================
+    // タグ詳細編集モーダルの制御機能
+    // =========================================
+    App.state.editingTagId = null;
+
+    $('#tagEditModalClose, #btnCancelTagEdit').on('click', function(){
+        $('#tagEditModalBackdrop').hide().attr('aria-hidden', 'true');
+        App.state.editingTagId = null;
+    });
+
+    $('#btnSaveTagEdit').on('click', function(){
+        const id = App.state.editingTagId;
+        const name = $('#tagEditName').val().trim();
+        const note = $('#tagEditNote').val().trim();
+
+        if(!name) { App.utils.showToast('タグ名を入力してください'); return; }
+
+        const links = [];
+        $('#tagLinksContainer .tl-row').each(function(){
+            if ($(this).hasClass('tl-display')) {
+                links.push({ type: $(this).data('type'), title: $(this).data('title'), path: $(this).data('path') });
+            } else if ($(this).hasClass('tl-edit')) {
+                const type = $(this).data('type');
+                const title = $(this).find('.tl-in-title').val().trim();
+                const path = $(this).find('.tl-in-path').val().trim();
+                if(type && title && path) links.push({ type, title, path });
+            }
+        });
+
+        App.api.post('?action=tag_update', { id: id, name: name, note: note, links: JSON.stringify(links) }).done(async ()=>{
+            await App.tags.loadAll();
+            App.tags.renderManageList();
+            App.tags.renderFilters();
+            if (App.tasks && App.tasks.applyBallFilterAndRenderList) App.tasks.applyBallFilterAndRenderList();
+            
+            $('#tagEditModalBackdrop').hide().attr('aria-hidden', 'true');
+            App.state.editingTagId = null;
+            App.utils.showToast('タグを更新しました');
+        });
+    });
+
+    // タグ用：関連フォルダ・リンク機能
+    window.renderTagLinksUI = function(linksJson) {
+        const $cont = $('#tagLinksContainer');
+        $cont.empty();
+        let links = [];
+        try { links = JSON.parse(linksJson || '[]'); } catch(e){}
+        links.forEach(lk => $cont.append(createTagDisplayRow(lk.title, lk.type, lk.path)));
+        checkTagAddButton();
+    };
+
+    function checkTagAddButton() {
+        if ($('#tagLinksContainer .tl-row').length >= 6) $('#btnAddTagLinkRow').hide();
+        else $('#btnAddTagLinkRow').show();
+    }
+
+    function createTagEditRow(title = '', type = '', path = '', isNew = false) {
+        const $row = $('<div class="tl-row tl-edit"></div>').data('type', type);
+        $row.data('orig-title', title);
+        $row.data('orig-type', type);
+        $row.data('orig-path', path);
+        $row.data('is-new', isNew);
+
+        let currentTitle = title;
+        if (currentTitle === '') {
+            if (type === 'folder') currentTitle = '対象フォルダ';
+            if (type === 'link')   currentTitle = '対象リンク';
+        }
+
+        $row.append(`<input type="text" class="tl-in-title" placeholder="表示名" value="${App.utils.escapeHtml(currentTitle)}" style="background:#fff; color:#000; border:1px solid #ccc; height:32px;">`);
+        
+        const $btnFolder = $(`<button type="button" class="btn tl-type-btn tl-btn-folder ${type==='folder'?'is-selected':''}">📁 フォルダ</button>`);
+        const $btnLink = $(`<button type="button" class="btn tl-type-btn tl-btn-link ${type==='link'?'is-selected':''}">🔗 リンク</button>`);
+        
+        if (type === 'folder') $btnLink.hide();
+        if (type === 'link') $btnFolder.hide();
+        
+        $row.append($btnFolder).append($btnLink);
+        
+        const $inPath = $(`<input type="text" class="tl-in-path" placeholder="${type==='link'?'URL (例: https://...)':'パスをペースト (例: C:\\Users\\...)'}" value="${App.utils.escapeHtml(path)}" style="background:#fff; color:#000; border:1px solid #ccc; height:32px;">`);
+        if (!type) $inPath.hide();
+
+        $row.append($inPath);
+        
+        $row.append(`<button type="button" class="btn tl-btn-cancel-edit">戻る</button>`);
+        $row.append(`<button type="button" class="btn tl-btn-save">確定</button>`);
+        $row.append(`<button type="button" class="tl-btn-del" title="削除" style="color:#888; background:transparent; border:none; cursor:pointer; font-size:16px;">✕</button>`);
+        return $row;
+    }
+
+    function createTagDisplayRow(title, type, path) {
+        const icon = type === 'folder' ? '📁' : '🔗';
+        const $row = $(`<div class="tl-row tl-display" data-type="${type}" data-title="${App.utils.escapeHtml(title)}" data-path="${App.utils.escapeHtml(path)}"></div>`);
+        $row.append(`<span class="tl-icon" style="color:#000;">${icon}</span>`);
+        $row.append(`<a href="#" class="tl-link-go" style="flex:1; color:#0066cc; text-decoration:none; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:bold;">${App.utils.escapeHtml(title)}</a>`);
+        $row.append(`<button type="button" class="tl-btn-edit" title="編集" style="color:#888; background:transparent; border:none; cursor:pointer; font-size:16px;">✏️</button>`);
+        $row.append(`<button type="button" class="tl-btn-del" title="削除" style="color:#888; background:transparent; border:none; cursor:pointer; font-size:16px;">✕</button>`);
+        return $row;
+    }
+
+    // タグリンク用イベントバインディング
+    $('#btnAddTagLinkRow').on('click', function(){
+        $('#tagLinksContainer').append(createTagEditRow('', '', '', true));
+        checkTagAddButton();
+    });
+
+    const $tmod = $('#tagEditModalBackdrop');
+
+    $tmod.on('click', '.tl-btn-cancel-edit', function(){
+        const $row = $(this).closest('.tl-row');
+        if ($row.data('is-new')) {
+            $row.remove(); 
+        } else {
+            $row.replaceWith(createTagDisplayRow($row.data('orig-title'), $row.data('orig-type'), $row.data('orig-path')));
+        }
+        checkTagAddButton();
+    });
+
+    $tmod.on('click', '.tl-btn-folder', function(){
+        const $row = $(this).closest('.tl-row');
+        $row.find('.tl-btn-link').hide();
+        $(this).addClass('is-selected');
+        const $titleInp = $row.find('.tl-in-title');
+        const currentVal = $titleInp.val().trim();
+        if (currentVal === '' || currentVal === '対象リンク') {
+            $titleInp.val('対象フォルダ');
+        }
+        $row.find('.tl-in-path').attr('placeholder', 'パスをペースト (例: C:\\Users\\...)').show().focus();
+        $row.data('type', 'folder');
+    });
+
+    $tmod.on('click', '.tl-btn-link', function(){
+        const $row = $(this).closest('.tl-row');
+        $row.find('.tl-btn-folder').hide();
+        $(this).addClass('is-selected');
+        const $titleInp = $row.find('.tl-in-title');
+        const currentVal = $titleInp.val().trim();
+        if (currentVal === '' || currentVal === '対象フォルダ') {
+            $titleInp.val('対象リンク');
+        }
+        $row.find('.tl-in-path').attr('placeholder', 'URL (例: https://...)').show().focus();
+        $row.data('type', 'link');
+    });
+
+    $tmod.on('click', '.tl-btn-save', function(){
+        const $row = $(this).closest('.tl-row');
+        const title = $row.find('.tl-in-title').val().trim();
+        const path = $row.find('.tl-in-path').val().trim();
+        const type = $row.data('type');
+        if(!title || !type || !path) { App.utils.showToast('タイトル、種類、パスをすべて入力してください'); return; }
+        $row.replaceWith(createTagDisplayRow(title, type, path));
+        checkTagAddButton();
+    });
+
+    $tmod.on('click', '.tl-btn-edit', function(){
+        const $row = $(this).closest('.tl-row');
+        $row.replaceWith(createTagEditRow($row.data('title'), $row.data('type'), $row.data('path'), false));
+        checkTagAddButton();
+    });
+
+    $tmod.on('click', '.tl-btn-del', function(){
+        $(this).closest('.tl-row').remove();
+        checkTagAddButton();
+    });
+
+    $tmod.on('click', '.tl-link-go', function(e){
+        e.preventDefault();
+        const $row = $(this).closest('.tl-row');
+        const type = $row.data('type');
+        const path = $row.data('path');
+        if (type === 'link') {
+            window.open(path, '_blank');
+        } else if (type === 'folder') {
+            App.api.post('?action=open_folder', { path: path }).done(res => {
+                if(!res.ok) App.utils.showToast(res.error || 'フォルダが開けません');
+            });
+        }
+    });
 
 })(window.App);

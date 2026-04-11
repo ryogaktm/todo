@@ -2312,17 +2312,38 @@ $bothLists.on('keydown.bl', '.balllist-item', function(e){
         else if (side === 1) note = $('#ballTheirs').val().trim();
         else if (side === 2) note = $('#ballProd').val().trim();
 
-        // 記録処理へ投げる
-        if (App.shell && App.shell.dailyWork) {
-            App.shell.dailyWork.addRecord({
-                title: title,
-                tags: tagNames.join(', '),
-                hours: hours,
-                note: note
-            });
-            App.utils.showToast('今日の作業に記録しました');
-        }
-    });
+// 記録処理へ投げる
+if (App.shell && App.shell.dailyWork) {
+  App.shell.dailyWork.addRecord({
+      title: title,
+      tags: tagNames.join(', '),
+      hours: hours,
+      note: note
+  });
+  App.utils.showToast('今日の作業に記録しました');
+
+  // ★追加: 押したことがはっきり分かるエフェクト
+  const $btn = $('#btnFinishWork');
+  const originalText = $btn.text();
+  
+  // ボタンを濃い緑にして少し大きく弾ませる
+  $btn.text('✓ 記録しました！')
+      .css({
+          'background-color': '#1b5e20',
+          'transform': 'scale(1.05)',
+          'transition': 'all 0.2s ease'
+      });
+      
+  // 1.5秒後に元の状態に戻す
+  setTimeout(() => {
+      $btn.text(originalText)
+          .css({
+              'background-color': '', 
+              'transform': 'scale(1)'
+          });
+  }, 1500);
+}
+});
 
       $ballTabMine.on('click',   ()=> setBallSide(0));
       $ballTabTheirs.on('click', ()=> setBallSide(1));
